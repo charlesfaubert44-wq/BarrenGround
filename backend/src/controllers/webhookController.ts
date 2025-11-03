@@ -63,14 +63,6 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, req: Re
 
   if (order) {
     await OrderModel.updateStatus(order.id, 'received');
-
-    // Broadcast new order to employees via WebSocket
-    const io = req.app.get('io');
-    if (io) {
-      const fullOrder = await OrderModel.getById(order.id);
-      io.emit('new_order', fullOrder);
-    }
-
     console.log(`Order ${order.id} marked as received`);
   }
 }

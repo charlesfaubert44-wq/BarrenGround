@@ -1,43 +1,26 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { getOrdersByStatus, updateOrderStatus as apiUpdateOrderStatus } from '../api/orders';
-import { useWebSocket } from '../hooks/useWebSocket';
 
 export default function OrderQueuePage() {
   const queryClient = useQueryClient();
-  const { on, off, isConnected } = useWebSocket();
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const prevOrderCountRef = useRef<number>(0);
 
   const { data: orders = [] } = useQuery({
     queryKey: ['orders', 'active'],
     queryFn: () => getOrdersByStatus(['received', 'preparing', 'ready']),
-    refetchInterval: isConnected ? false : 10000, // Only poll if WebSocket is disconnected
+    refetchInterval: 5000, // Poll every 5 seconds
   });
 
-  // WebSocket event handlers
+  // Play sound when new orders arrive
   useEffect(() => {
-    const handleNewOrder = (order: any) => {
-      console.log('New order received:', order);
-      // Play notification sound
+    if (orders.length > prevOrderCountRef.current) {
+      // Play notification sound for new orders
       audioRef.current?.play().catch((e) => console.log('Audio play failed:', e));
-      // Refetch orders
-      queryClient.invalidateQueries({ queryKey: ['orders', 'active'] });
-    };
-
-    const handleOrderUpdated = (order: any) => {
-      console.log('Order updated:', order);
-      // Refetch orders
-      queryClient.invalidateQueries({ queryKey: ['orders', 'active'] });
-    };
-
-    on('new_order', handleNewOrder);
-    on('order_updated', handleOrderUpdated);
-
-    return () => {
-      off('new_order', handleNewOrder);
-      off('order_updated', handleOrderUpdated);
-    };
-  }, [on, off, queryClient]);
+    }
+    prevOrderCountRef.current = orders.length;
+  }, [orders.length]);
 
   const updateOrderStatus = async (orderId: number, newStatus: string) => {
     try {
@@ -71,11 +54,11 @@ export default function OrderQueuePage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Order Queue</h1>
         <div className="flex items-center gap-4">
-          {/* Connection Status */}
+          {/* Auto-refresh indicator */}
           <div className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+            <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
             <span className="text-sm text-gray-600">
-              {isConnected ? 'Live' : 'Disconnected'}
+              Auto-refresh (5s)
             </span>
           </div>
 
@@ -98,8 +81,7 @@ export default function OrderQueuePage() {
           {orders.map((order) => (
             <div
               key={order.id}
-              className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition cursor-pointer"
-              onClick={() => setSelectedOrder(order)}
+              className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition"
             >
               <div className="flex items-start justify-between mb-4">
                 <div>

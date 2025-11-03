@@ -68,12 +68,6 @@ export async function updateMenuItemAvailability(req: Request, res: Response): P
       return;
     }
 
-    // Broadcast to WebSocket clients
-    const io = req.app.get('io');
-    if (io) {
-      io.emit('menu_item_updated', item);
-    }
-
     res.json(item);
   } catch (error) {
     console.error('Update menu item availability error:', error);

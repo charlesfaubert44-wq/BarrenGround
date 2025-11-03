@@ -191,13 +191,6 @@ export async function updateOrderStatus(req: Request, res: Response): Promise<vo
       return;
     }
 
-    // Broadcast to WebSocket clients
-    const io = req.app.get('io');
-    if (io) {
-      const fullOrder = await OrderModel.getById(id);
-      io.emit('order_updated', fullOrder);
-    }
-
     res.json(order);
   } catch (error) {
     console.error('Update order status error:', error);

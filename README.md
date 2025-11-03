@@ -245,16 +245,21 @@ The system is ready for end-to-end testing with these components:
    - Implement order cancellation/refunds
 
 3. **Deployment:**
-   - Set up production database
-   - Configure production Stripe keys
-   - Deploy backend to Railway/Render
-   - Deploy frontends to Vercel/Netlify
-   - Set up domain and SSL
-   - Configure production webhooks
+   - **Vercel (Recommended)**: See [VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md)
+     - Deploy all 3 apps to Vercel
+     - Polling-based real-time updates (5-10s)
+     - Serverless, auto-scaling, free tier available
+   - **Railway (Alternative)**: See [RAILWAY_DEPLOYMENT.md](RAILWAY_DEPLOYMENT.md)
+     - Full-stack deployment with WebSocket support
+     - Better for true real-time (sub-second updates)
+     - Requires paid plan after free credits
 
 ## Documentation
 
-See the [design document](docs/plans/2025-11-01-coffee-ordering-system-design.md) for detailed architecture and implementation plans.
+- **Deployment Guides**:
+  - [Vercel Deployment](VERCEL_DEPLOYMENT.md) - Serverless, polling-based
+  - [Railway Deployment](RAILWAY_DEPLOYMENT.md) - Traditional hosting with WebSockets
+- **Architecture**: [Design Document](docs/plans/2025-11-01-coffee-ordering-system-design.md)
 
 ## License
 
