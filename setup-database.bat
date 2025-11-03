@@ -1,0 +1,13 @@
+@echo off
+echo Creating database...
+"C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -c "CREATE DATABASE barrenground;"
+
+echo Loading schema...
+"C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -d barrenground -f "backend\src\config\schema.sql"
+
+echo Verifying...
+"C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -d barrenground -c "SELECT COUNT(*) FROM menu_items;"
+
+echo.
+echo Done! Press any key to close...
+pause

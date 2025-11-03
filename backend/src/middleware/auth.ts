@@ -1,0 +1,45 @@
+import { Request, Response, NextFunction } from 'express';
+import { verifyToken, JwtPayload } from '../utils/jwt';
+
+// Extend Express Request to include user info
+declare global {
+  namespace Express {
+    interface Request {
+      user?: JwtPayload;
+    }
+  }
+}
+
+export function authenticateToken(req: Request, res: Response, next: NextFunction): void {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (!token) {
+    res.status(401).json({ error: 'Access token required' });
+    return;
+  }
+
+  const user = verifyToken(token);
+
+  if (!user) {
+    res.status(403).json({ error: 'Invalid or expired token' });
+    return;
+  }
+
+  req.user = user;
+  next();
+}
+
+export function optionalAuth(req: Request, res: Response, next: NextFunction): void {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (token) {
+    const user = verifyToken(token);
+    if (user) {
+      req.user = user;
+    }
+  }
+
+  next();
+}
