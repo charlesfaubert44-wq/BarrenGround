@@ -1,7 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js';
-import { useCartStore } from '../../store/cartStore';
 
 interface CheckoutFormProps {
   orderId: number;
@@ -10,8 +8,6 @@ interface CheckoutFormProps {
 export default function CheckoutForm({ orderId }: CheckoutFormProps) {
   const stripe = useStripe();
   const elements = useElements();
-  const navigate = useNavigate();
-  const clearCart = useCartStore((state) => state.clearCart);
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
