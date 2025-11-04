@@ -1,23 +1,21 @@
 {
   "version": 2,
-  "builds": [
+  "name": "barrenground-api",
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
+  "framework": null,
+  "rewrites": [
     {
-      "src": "src/server.ts",
-      "use": "@vercel/node"
+      "source": "/(.*)",
+      "destination": "/api"
     }
   ],
-  "routes": [
-    {
-      "src": "/webhooks/(.*)",
-      "dest": "src/server.ts"
-    },
-    {
-      "src": "/api/(.*)",
-      "dest": "src/server.ts"
-    },
-    {
-      "src": "/health",
-      "dest": "src/server.ts"
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 30
     }
-  ]
+  },
+  "env": {
+    "NODE_ENV": "production"
+  }
 }

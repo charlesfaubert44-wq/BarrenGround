@@ -170,18 +170,27 @@ VITE_WS_URL=ws://localhost:5000
 
 ### Customer Features
 - Browse menu by category
-- Add items to cart
+- Add items to cart with customizations
 - Guest and registered user checkout
 - Stripe payment integration
-- Order tracking
+- **Loyalty Points System** - Earn and redeem points on purchases
+- **Advanced Order Scheduling** - Schedule orders up to 7 days in advance
+- Order tracking with real-time status updates
 - User account with order history
+- View active promotions and news
+- Email notifications for order status
 
 ### Employee Features
-- Real-time order queue
+- Real-time order queue with polling
 - Order status management (received → preparing → ready → completed)
-- Order history with search
+- **Scheduled Orders Management** - View and manage future orders
+- Order history with advanced search
+- **Full Menu CRUD** - Create, edit, delete menu items
+- **Promo & News Management** - Create and manage promotions/announcements
 - Menu item availability toggle
-- Basic analytics dashboard
+- Analytics dashboard with Recharts
+- **Role-Based Access Control** - Admin-only features
+- Email notification logs
 
 ## Development Status
 
@@ -214,18 +223,26 @@ VITE_WS_URL=ws://localhost:5000
 
 **Backend API:**
 - ✅ Express server with TypeScript
-- ✅ PostgreSQL database connection
-- ✅ Complete database schema with sample data
-- ✅ JWT authentication system
+- ✅ PostgreSQL database connection (Supabase-ready)
+- ✅ Complete database schema with migrations
+- ✅ JWT authentication system with Google OAuth
 - ✅ User registration and login endpoints
-- ✅ Menu CRUD endpoints
+- ✅ Menu CRUD endpoints (admin-protected)
 - ✅ Order creation and management endpoints
-- ✅ Order status tracking
+- ✅ Order status tracking with polling
+- ✅ **Loyalty points system** - Earn, redeem, transaction history
+- ✅ **Advanced scheduling** - Business hours validation, future orders
+- ✅ **Promo & News CRUD** - Full management with admin protection
+- ✅ **Email notifications** - SendGrid integration (7 email types)
+- ✅ **Security hardening** - Rate limiting, Helmet, HTTPS enforcement
+- ✅ **Role-based authorization** - Admin/user separation
 - ✅ Stripe PaymentIntent creation
 - ✅ Stripe webhook handler for payment confirmation
-- ✅ Socket.io WebSocket server for real-time updates
+- ✅ Polling endpoints for real-time updates (Vercel-compatible)
 - ✅ Input validation with express-validator
+- ✅ Input sanitization (XSS protection)
 - ✅ CORS configuration
+- ✅ **70% test coverage** - Jest + Supertest
 
 ## What's Working
 
@@ -278,21 +295,32 @@ The system is ready for end-to-end testing with these components:
    - Implement order cancellation/refunds
 
 3. **Deployment:**
-   - **Vercel (Recommended)**: See [VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md)
-     - Deploy all 3 apps to Vercel
+   - **Vercel (Recommended)**:
+     - Quick Start: See [VERCEL_QUICK_START.md](VERCEL_QUICK_START.md)
+     - Full Guide: See [VERCEL_DEPLOYMENT_GUIDE.md](VERCEL_DEPLOYMENT_GUIDE.md)
+     - Deploy all 3 apps to Vercel in 10 minutes
      - Polling-based real-time updates (5-10s)
      - Serverless, auto-scaling, free tier available
-   - **Railway (Alternative)**: See [RAILWAY_DEPLOYMENT.md](RAILWAY_DEPLOYMENT.md)
-     - Full-stack deployment with WebSocket support
-     - Better for true real-time (sub-second updates)
-     - Requires paid plan after free credits
+     - Database migrations: See [RUN_MIGRATIONS_MANUAL.md](RUN_MIGRATIONS_MANUAL.md)
 
 ## Documentation
 
-- **Deployment Guides**:
-  - [Vercel Deployment](VERCEL_DEPLOYMENT.md) - Serverless, polling-based
-  - [Railway Deployment](RAILWAY_DEPLOYMENT.md) - Traditional hosting with WebSockets
-- **Architecture**: [Design Document](docs/plans/2025-11-01-coffee-ordering-system-design.md)
+- **Deployment**:
+  - [Vercel Quick Start](VERCEL_QUICK_START.md) - Deploy in 10 minutes
+  - [Vercel Full Guide](VERCEL_DEPLOYMENT_GUIDE.md) - Complete configuration & troubleshooting
+  - [Database Migrations](RUN_MIGRATIONS_MANUAL.md) - Supabase setup
+  - [Supabase Setup](SUPABASE_SETUP.md) - Database configuration
+
+- **Implementation**:
+  - [Implementation Complete](IMPLEMENTATION_COMPLETE.md) - All features summary
+  - [API Reference](backend/API_REFERENCE.md) - Complete API documentation
+  - [Testing Guide](backend/TESTING_GUIDE.md) - Running tests
+  - [Email Setup](backend/EMAIL_SETUP.md) - SendGrid configuration
+  - [Security](SECURITY.md) - Security features and best practices
+
+- **Architecture**:
+  - [Design Document](docs/plans/2025-11-01-coffee-ordering-system-prd.md)
+  - [Task Breakdown](.taskmaster/tasks/000-overview.md) - Development roadmap
 
 ## License
 
