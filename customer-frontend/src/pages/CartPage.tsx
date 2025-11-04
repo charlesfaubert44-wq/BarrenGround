@@ -141,7 +141,7 @@ export default function CartPage() {
           <div className="lg:col-span-2 space-y-3">
             {items.map((item, idx) => (
               <div
-                key={item.id}
+                key={item.cartItemId}
                 className="bg-stone-800 rounded-lg shadow-lg p-3 sm:p-4 hover:shadow-2xl transition-all scale-in border-2 border-amber-800/50"
                 style={{ animationDelay: `${idx * 0.1}s` }}
               >
@@ -151,6 +151,29 @@ export default function CartPage() {
                     <h3 className="text-sm sm:text-lg font-bold text-stone-100 mb-1">
                       {item.name}
                     </h3>
+                    {item.customizations && Object.keys(item.customizations).length > 0 && (
+                      <div className="text-xs mb-1 space-y-0.5">
+                        {Object.entries(item.customizations).map(([key, value]) => {
+                          if (!value) return null;
+
+                          // Special styling for notes
+                          if (key === 'notes') {
+                            return (
+                              <div key={key} className="bg-amber-900/20 border-l-2 border-amber-500 pl-2 py-1 mt-1 text-amber-300">
+                                <span className="font-semibold">💬 Note:</span> <em>{value}</em>
+                              </div>
+                            );
+                          }
+
+                          // Regular customizations
+                          return (
+                            <div key={key} className="text-amber-400">
+                              <span className="font-semibold capitalize">{key}:</span> {value}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                     <p className="text-stone-300 font-semibold text-xs sm:text-sm">
                       ${item.price.toFixed(2)} each
                     </p>
@@ -159,7 +182,7 @@ export default function CartPage() {
                   {/* Quantity Controls - Compact */}
                   <div className="flex items-center gap-1.5 sm:gap-2 bg-stone-900 rounded-lg px-1.5 py-1 border border-amber-800/50">
                     <button
-                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                      onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
                       className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-amber-700 to-amber-800 text-stone-100 hover:from-amber-600 hover:to-amber-700 flex items-center justify-center transition font-bold text-xs sm:text-sm"
                       aria-label="Decrease quantity"
                     >
@@ -169,7 +192,7 @@ export default function CartPage() {
                       {item.quantity}
                     </span>
                     <button
-                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
                       className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-amber-700 to-amber-800 text-stone-100 hover:from-amber-600 hover:to-amber-700 flex items-center justify-center transition font-bold text-xs sm:text-sm"
                       aria-label="Increase quantity"
                     >
@@ -183,7 +206,7 @@ export default function CartPage() {
                       ${(item.price * item.quantity).toFixed(2)}
                     </p>
                     <button
-                      onClick={() => removeItem(item.id)}
+                      onClick={() => removeItem(item.cartItemId)}
                       className="text-red-400 hover:text-red-300 text-xs font-bold transition px-2 py-0.5 rounded border border-red-600/50 hover:bg-red-900/30"
                     >
                       Remove

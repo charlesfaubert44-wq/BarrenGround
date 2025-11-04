@@ -1,14 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken, JwtPayload } from '../utils/jwt';
 
-// Extend Express Request to include user info
-declare global {
-  namespace Express {
-    interface Request {
-      user?: JwtPayload;
-    }
-  }
-}
+// Note: Using type assertion instead of declaration to avoid conflict with passport types
 
 export function authenticateToken(req: Request, res: Response, next: NextFunction): void {
   const authHeader = req.headers['authorization'];
@@ -26,7 +19,7 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
     return;
   }
 
-  req.user = user;
+  (req as any).user = user;
   next();
 }
 
@@ -37,7 +30,7 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction): v
   if (token) {
     const user = verifyToken(token);
     if (user) {
-      req.user = user;
+      (req as any).user = user;
     }
   }
 

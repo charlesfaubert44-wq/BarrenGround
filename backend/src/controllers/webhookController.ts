@@ -1,14 +1,32 @@
 import { Request, Response } from 'express';
 import Stripe from 'stripe';
 import { OrderModel } from '../models/Order';
+import { UserMembershipModel } from '../models/UserMembership';
+import { MembershipPlanModel } from '../models/MembershipPlan';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-10-29.clover',
-});
-
+// Initialize Stripe only if API key is provided and valid
+let stripe: Stripe | null = null;
+const stripeKey = process.env.STRIPE_SECRET_KEY;
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
 
+if (stripeKey && stripeKey.startsWith('sk_')) {
+  try {
+    stripe = new Stripe(stripeKey, {
+      apiVersion: '2025-10-29.clover',
+    });
+  } catch (error) {
+    console.warn('⚠️  Stripe webhook initialization failed:', error);
+  }
+}
+
 export async function handleStripeWebhook(req: Request, res: Response): Promise<void> {
+  // Check if Stripe is configured
+  if (!stripe) {
+    console.warn('⚠️  Stripe webhook called but Stripe is not configured');
+    res.status(200).json({ received: true, note: 'Stripe not configured' });
+    return;
+  }
+
   const sig = req.headers['stripe-signature'];
 
   if (!sig) {
@@ -39,6 +57,31 @@ export async function handleStripeWebhook(req: Request, res: Response): Promise<
       case 'payment_intent.payment_failed': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         await handlePaymentFailure(paymentIntent);
+        break;
+      }
+
+      case 'customer.subscription.created':
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object as Stripe.Subscription;
+        await handleSubscriptionUpdate(subscription);
+        break;
+      }
+
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object as Stripe.Subscription;
+        await handleSubscriptionDeleted(subscription);
+        break;
+      }
+
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object as Stripe.Invoice;
+        await handleInvoicePaymentSucceeded(invoice);
+        break;
+      }
+
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object as Stripe.Invoice;
+        await handleInvoicePaymentFailed(invoice);
         break;
       }
 
@@ -77,5 +120,80 @@ async function handlePaymentFailure(paymentIntent: Stripe.PaymentIntent): Promis
   if (order) {
     await OrderModel.updateStatus(order.id, 'cancelled');
     console.log(`Order ${order.id} marked as cancelled due to payment failure`);
+  }
+}
+
+async function handleSubscriptionUpdate(subscription: Stripe.Subscription): Promise<void> {
+  console.log('Subscription updated:', subscription.id);
+
+  const membership = await UserMembershipModel.findByStripeSubscriptionId(subscription.id);
+
+  if (membership) {
+    // Update membership status based on subscription status
+    let status: 'active' | 'canceled' | 'past_due' | 'expired' = 'active';
+    if (subscription.status === 'canceled') {
+      status = 'canceled';
+    } else if (subscription.status === 'past_due') {
+      status = 'past_due';
+    } else if (subscription.status === 'unpaid' || subscription.status === 'incomplete_expired') {
+      status = 'expired';
+    }
+
+    await UserMembershipModel.updateStatus(membership.id, status);
+
+    // Reset coffees for new billing period if subscription is active
+    if (subscription.status === 'active') {
+      const plan = await MembershipPlanModel.findById(membership.plan_id);
+      if (plan) {
+        const periodStart = new Date(subscription.current_period_start * 1000);
+        const periodEnd = new Date(subscription.current_period_end * 1000);
+        await UserMembershipModel.resetCoffees(
+          membership.id,
+          plan.coffees_per_interval,
+          periodStart,
+          periodEnd
+        );
+        console.log(`Membership ${membership.id} coffees reset for new period`);
+      }
+    }
+  }
+}
+
+async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
+  console.log('Subscription deleted:', subscription.id);
+
+  const membership = await UserMembershipModel.findByStripeSubscriptionId(subscription.id);
+
+  if (membership) {
+    await UserMembershipModel.updateStatus(membership.id, 'canceled');
+    console.log(`Membership ${membership.id} marked as canceled`);
+  }
+}
+
+async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
+  console.log('Invoice payment succeeded:', invoice.id);
+
+  // If this is a subscription invoice, ensure membership is active
+  if (invoice.subscription && typeof invoice.subscription === 'string') {
+    const membership = await UserMembershipModel.findByStripeSubscriptionId(invoice.subscription);
+
+    if (membership && membership.status !== 'active') {
+      await UserMembershipModel.updateStatus(membership.id, 'active');
+      console.log(`Membership ${membership.id} reactivated after successful payment`);
+    }
+  }
+}
+
+async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
+  console.log('Invoice payment failed:', invoice.id);
+
+  // Mark membership as past_due
+  if (invoice.subscription && typeof invoice.subscription === 'string') {
+    const membership = await UserMembershipModel.findByStripeSubscriptionId(invoice.subscription);
+
+    if (membership) {
+      await UserMembershipModel.updateStatus(membership.id, 'past_due');
+      console.log(`Membership ${membership.id} marked as past_due due to payment failure`);
+    }
   }
 }

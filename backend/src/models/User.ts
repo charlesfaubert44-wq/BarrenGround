@@ -4,10 +4,15 @@ import bcrypt from 'bcrypt';
 export interface User {
   id: number;
   email: string;
-  password_hash: string;
+  password_hash?: string;
   name: string;
   phone?: string;
+  oauth_provider?: string;
+  oauth_provider_id?: string;
+  stripe_customer_id?: string;
+  last_order_id?: number;
   created_at: Date;
+  updated_at: Date;
 }
 
 export interface CreateUserData {
@@ -84,5 +89,76 @@ export class UserModel {
       [password_hash, id]
     );
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // OAuth-specific methods
+  static async findByOAuthProvider(provider: string, providerId: string): Promise<User | null> {
+    const result = await pool.query(
+      'SELECT * FROM users WHERE oauth_provider = $1 AND oauth_provider_id = $2',
+      [provider, providerId]
+    );
+    return result.rows[0] || null;
+  }
+
+  static async createOAuthUser(data: {
+    email: string;
+    name: string;
+    oauth_provider: string;
+    oauth_provider_id: string;
+  }): Promise<Omit<User, 'password_hash'>> {
+    const result = await pool.query(
+      `INSERT INTO users (email, name, oauth_provider, oauth_provider_id)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, email, name, phone, oauth_provider, oauth_provider_id, stripe_customer_id, last_order_id, created_at, updated_at`,
+      [data.email, data.name, data.oauth_provider, data.oauth_provider_id]
+    );
+    return result.rows[0];
+  }
+
+  static async findOrCreateOAuthUser(data: {
+    email: string;
+    name: string;
+    oauth_provider: string;
+    oauth_provider_id: string;
+  }): Promise<Omit<User, 'password_hash'>> {
+    // First, try to find by OAuth provider ID
+    let user = await this.findByOAuthProvider(data.oauth_provider, data.oauth_provider_id);
+
+    if (user) {
+      // Return user without password_hash
+      const { password_hash, ...userWithoutPassword } = user;
+      return userWithoutPassword;
+    }
+
+    // If not found by provider ID, check if email exists
+    user = await this.findByEmail(data.email);
+
+    if (user) {
+      // Link OAuth to existing account
+      const result = await pool.query(
+        `UPDATE users SET oauth_provider = $1, oauth_provider_id = $2, updated_at = NOW()
+         WHERE id = $3
+         RETURNING id, email, name, phone, oauth_provider, oauth_provider_id, stripe_customer_id, last_order_id, created_at, updated_at`,
+        [data.oauth_provider, data.oauth_provider_id, user.id]
+      );
+      return result.rows[0];
+    }
+
+    // Create new OAuth user
+    return this.createOAuthUser(data);
+  }
+
+  static async updateLastOrder(userId: number, orderId: number): Promise<void> {
+    await pool.query(
+      'UPDATE users SET last_order_id = $1, updated_at = NOW() WHERE id = $2',
+      [orderId, userId]
+    );
+  }
+
+  static async updateStripeCustomerId(userId: number, stripeCustomerId: string): Promise<void> {
+    await pool.query(
+      'UPDATE users SET stripe_customer_id = $1, updated_at = NOW() WHERE id = $2',
+      [stripeCustomerId, userId]
+    );
   }
 }

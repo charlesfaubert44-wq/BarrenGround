@@ -6,7 +6,9 @@ import {
   getUserOrders,
   getOrdersByStatus,
   updateOrderStatus,
+  updateCustomerStatus,
   getRecentOrders,
+  getLastOrder,
   createOrderValidation,
   updateOrderStatusValidation,
 } from '../controllers/orderController';
@@ -20,8 +22,14 @@ router.post('/', optionalAuth, createOrderValidation, createOrder);
 // Get order by tracking token (public, for guests)
 router.get('/track/:token', getOrderByToken);
 
+// Update customer status by tracking token (public, for guests and users)
+router.put('/track/:trackingToken/customer-status', updateCustomerStatus);
+
 // Get user's orders (authenticated)
 router.get('/my-orders', authenticateToken, getUserOrders);
+
+// Get user's last order for repeat functionality (authenticated)
+router.get('/last-order', authenticateToken, getLastOrder);
 
 // Get orders by status (employee dashboard)
 router.get('/', authenticateToken, getOrdersByStatus);

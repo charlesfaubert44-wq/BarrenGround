@@ -8,6 +8,7 @@ export interface Order {
   total: number;
   status: string;
   payment_intent_id: string;
+  pickup_time?: string;
   created_at: string;
   items: Array<{
     id: number;

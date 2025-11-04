@@ -1,0 +1,24 @@
+{
+  "name": "barrenground-coffee",
+  "version": "1.0.0",
+  "description": "Barren Ground Coffee ordering system with customer frontend and employee dashboard",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:customer\" \"npm run dev:employee\" --names \"backend,customer,employee\" --prefix-colors \"blue,green,yellow\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:customer": "cd customer-frontend && npm run dev",
+    "dev:employee": "cd employee-dashboard && npm run dev",
+    "db:test": "cd backend && npm run db:test",
+    "db:init": "cd backend && npm run db:init",
+    "db:create": "cd backend && npm run db:create",
+    "db:setup": "cd backend && npm run db:setup",
+    "db:seed": "cd backend && npm run db:seed",
+    "install:all": "npm install && cd backend && npm install && cd ../customer-frontend && npm install && cd ../employee-dashboard && npm install",
+    "build:all": "cd backend && npm run build && cd ../customer-frontend && npm run build && cd ../employee-dashboard && npm run build",
+    "lint:customer": "cd customer-frontend && npm run lint",
+    "lint:employee": "cd employee-dashboard && npm run lint"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

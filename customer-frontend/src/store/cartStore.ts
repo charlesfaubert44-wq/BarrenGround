@@ -7,16 +7,62 @@ export interface CartItem {
   price: number;
   quantity: number;
   customizations?: Record<string, string>;
+  cartItemId: string; // Unique identifier for cart item (id + customizations)
 }
 
 interface CartStore {
   items: CartItem[];
-  addItem: (item: Omit<CartItem, 'quantity'>) => void;
-  removeItem: (id: number) => void;
-  updateQuantity: (id: number, quantity: number) => void;
+  addItem: (item: Omit<CartItem, 'quantity' | 'cartItemId'>) => void;
+  removeItem: (cartItemId: string) => void;
+  updateQuantity: (cartItemId: string, quantity: number) => void;
   clearCart: () => void;
   getTotalPrice: () => number;
 }
+
+// Generate a unique session ID for this browser session
+const getSessionId = () => {
+  let sessionId = sessionStorage.getItem('cart-session-id');
+  if (!sessionId) {
+    sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    sessionStorage.setItem('cart-session-id', sessionId);
+  }
+  return sessionId;
+};
+
+// Function to sync cart with backend
+const syncCartWithBackend = async (items: CartItem[], total: number) => {
+  try {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8888';
+    const sessionId = getSessionId();
+
+    if (items.length === 0) {
+      // Cart is empty, remove from backend
+      await fetch(`${apiUrl}/api/carts/${sessionId}`, {
+        method: 'DELETE',
+      });
+    } else {
+      // Update cart on backend
+      await fetch(`${apiUrl}/api/carts/update`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId,
+          items,
+          total,
+        }),
+      });
+    }
+  } catch (error) {
+    console.error('Failed to sync cart with backend:', error);
+  }
+};
+
+// Helper function to generate unique cart item ID
+const generateCartItemId = (id: number, customizations?: Record<string, string>) => {
+  return `${id}-${JSON.stringify(customizations || {})}`;
+};
 
 export const useCartStore = create<CartStore>()(
   persist(
@@ -25,16 +71,13 @@ export const useCartStore = create<CartStore>()(
 
       addItem: (item) => {
         set((state) => {
-          const existingItem = state.items.find(
-            (i) => i.id === item.id &&
-            JSON.stringify(i.customizations) === JSON.stringify(item.customizations)
-          );
+          const cartItemId = generateCartItemId(item.id, item.customizations);
+          const existingItem = state.items.find((i) => i.cartItemId === cartItemId);
 
           if (existingItem) {
             return {
               items: state.items.map((i) =>
-                i.id === item.id &&
-                JSON.stringify(i.customizations) === JSON.stringify(item.customizations)
+                i.cartItemId === cartItemId
                   ? { ...i, quantity: i.quantity + 1 }
                   : i
               ),
@@ -42,32 +85,56 @@ export const useCartStore = create<CartStore>()(
           }
 
           return {
-            items: [...state.items, { ...item, quantity: 1 }],
+            items: [...state.items, { ...item, cartItemId, quantity: 1 }],
           };
         });
+
+        // Sync with backend
+        setTimeout(() => {
+          const state = get();
+          syncCartWithBackend(state.items, state.getTotalPrice());
+        }, 0);
       },
 
-      removeItem: (id) => {
+      removeItem: (cartItemId) => {
         set((state) => ({
-          items: state.items.filter((item) => item.id !== id),
+          items: state.items.filter((item) => item.cartItemId !== cartItemId),
         }));
+
+        // Sync with backend
+        setTimeout(() => {
+          const state = get();
+          syncCartWithBackend(state.items, state.getTotalPrice());
+        }, 0);
       },
 
-      updateQuantity: (id, quantity) => {
+      updateQuantity: (cartItemId, quantity) => {
         if (quantity <= 0) {
-          get().removeItem(id);
+          get().removeItem(cartItemId);
           return;
         }
 
         set((state) => ({
           items: state.items.map((item) =>
-            item.id === id ? { ...item, quantity } : item
+            item.cartItemId === cartItemId ? { ...item, quantity } : item
           ),
         }));
+
+        // Sync with backend
+        setTimeout(() => {
+          const state = get();
+          syncCartWithBackend(state.items, state.getTotalPrice());
+        }, 0);
       },
 
       clearCart: () => {
         set({ items: [] });
+
+        // Sync with backend
+        setTimeout(() => {
+          const state = get();
+          syncCartWithBackend(state.items, state.getTotalPrice());
+        }, 0);
       },
 
       getTotalPrice: () => {

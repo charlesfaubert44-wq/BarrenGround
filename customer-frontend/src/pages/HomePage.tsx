@@ -1,6 +1,34 @@
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '../api/client';
+
+interface NewsItem {
+  id: number;
+  title: string;
+  content: string;
+  image_url?: string;
+  created_at: string;
+}
+
+interface Promo {
+  id: number;
+  title: string;
+  description: string;
+  image_url: string;
+  link_url?: string;
+}
 
 export default function HomePage() {
+  const { data: news = [] } = useQuery<NewsItem[]>({
+    queryKey: ['news'],
+    queryFn: () => apiRequest<NewsItem[]>('/api/news/active'),
+  });
+
+  const { data: promos = [] } = useQuery<Promo[]>({
+    queryKey: ['promos'],
+    queryFn: () => apiRequest<Promo[]>('/api/promos/active'),
+  });
+
   return (
     <div className="min-h-screen">
       {/* Hero Section - Full Screen with animated background */}
@@ -63,6 +91,79 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Promos Section */}
+      {promos.length > 0 && (
+        <section className="bg-gradient-to-br from-amber-50 to-amber-100 py-12 sm:py-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="text-3xl sm:text-4xl font-bold text-center text-stone-900 mb-8 distressed-text">
+              SPECIAL OFFERS
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {promos.map((promo) => (
+                <Link
+                  key={promo.id}
+                  to={promo.link_url || '/menu'}
+                  className="group relative overflow-hidden rounded-2xl shadow-2xl hover:shadow-amber-900/40 transition-all duration-300 transform hover:scale-[1.02] border-4 border-stone-800"
+                >
+                  <div className="h-64 sm:h-80 relative">
+                    <img
+                      src={promo.image_url}
+                      alt={promo.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
+                    <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                      <h3 className="text-2xl sm:text-3xl font-bold mb-2 distressed-text">{promo.title}</h3>
+                      <p className="text-sm sm:text-base font-semibold opacity-90">{promo.description}</p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* News Section */}
+      {news.length > 0 && (
+        <section className="wood-texture py-16 sm:py-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="text-3xl sm:text-4xl font-bold text-center text-stone-100 mb-12 distressed-text">
+              LATEST NEWS
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {news.slice(0, 6).map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-stone-800 rounded-xl overflow-hidden shadow-2xl border-4 border-amber-800/50 hover:shadow-amber-900/40 transition-all"
+                >
+                  {item.image_url && (
+                    <div className="h-48 overflow-hidden">
+                      <img
+                        src={item.image_url}
+                        alt={item.title}
+                        className="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
+                      />
+                    </div>
+                  )}
+                  <div className="p-6">
+                    <h3 className="text-xl font-bold text-stone-100 mb-3">{item.title}</h3>
+                    <p className="text-stone-300 text-sm leading-relaxed mb-3">{item.content}</p>
+                    <p className="text-xs text-amber-400 font-semibold">
+                      {new Date(item.created_at).toLocaleDateString('en-US', {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Features Section */}
       <section className="vintage-paper py-16 sm:py-20 lg:py-28">

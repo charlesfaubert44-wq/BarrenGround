@@ -3,9 +3,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import DashboardLayout from './components/layout/DashboardLayout';
 import LoginPage from './pages/LoginPage';
 import OrderQueuePage from './pages/OrderQueuePage';
+import KitchenQueuePage from './pages/KitchenQueuePage';
 import OrderHistoryPage from './pages/OrderHistoryPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import MenuManagementPage from './pages/MenuManagementPage';
+import LiveCartsPage from './pages/LiveCartsPage';
+import PromoManagementPage from './pages/PromoManagementPage';
+import NewsManagementPage from './pages/NewsManagementPage';
 import { useAuthStore } from './store/authStore';
 
 const queryClient = new QueryClient({
@@ -33,9 +37,13 @@ function App() {
             }
           >
             <Route index element={<OrderQueuePage />} />
+            <Route path="kitchen" element={<KitchenQueuePage />} />
+            <Route path="live-carts" element={<LiveCartsPage />} />
             <Route path="history" element={<OrderHistoryPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="menu" element={<MenuManagementPage />} />
+            <Route path="promos" element={<PromoManagementPage />} />
+            <Route path="news" element={<NewsManagementPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

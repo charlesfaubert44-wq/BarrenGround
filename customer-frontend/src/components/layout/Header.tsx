@@ -28,7 +28,12 @@ export default function Header() {
             className="hover:opacity-80 transition flex-shrink-0"
             onClick={closeMobileMenu}
           >
-            <span className="text-xl sm:text-2xl font-bold distressed-text" style={{ letterSpacing: '0.1em' }}>
+            {/* Mobile: Show "BARREN GROUND" only */}
+            <span className="sm:hidden text-xl font-bold distressed-text" style={{ letterSpacing: '0.1em' }}>
+              BARREN GROUND
+            </span>
+            {/* Desktop: Show full name */}
+            <span className="hidden sm:inline text-xl sm:text-2xl font-bold distressed-text" style={{ letterSpacing: '0.1em' }}>
               BARREN GROUND COFFEE
             </span>
           </Link>
@@ -37,6 +42,9 @@ export default function Header() {
           <nav className="hidden md:flex items-center gap-6">
             <Link to="/menu" className="hover:text-stone-300 transition font-bold tracking-wider text-sm" style={{ letterSpacing: '0.08em' }}>
               MENU
+            </Link>
+            <Link to="/membership" className="hover:text-stone-300 transition font-bold tracking-wider text-sm" style={{ letterSpacing: '0.08em' }}>
+              ☕ MEMBERSHIP
             </Link>
             <Link to="/cart" className="relative hover:text-stone-300 transition font-bold tracking-wider text-sm" style={{ letterSpacing: '0.08em' }}>
               CART
@@ -114,6 +122,14 @@ export default function Header() {
               style={{ letterSpacing: '0.08em' }}
             >
               MENU
+            </Link>
+            <Link
+              to="/membership"
+              onClick={closeMobileMenu}
+              className="block py-3 px-4 hover:bg-stone-700 rounded-md transition font-bold tracking-wider text-sm border-2 border-stone-700"
+              style={{ letterSpacing: '0.08em' }}
+            >
+              ☕ MEMBERSHIP
             </Link>
             <Link
               to="/cart"

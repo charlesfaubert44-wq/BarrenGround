@@ -8,10 +8,11 @@ export interface Order {
   guest_name?: string;
   guest_phone?: string;
   total: number;
-  status: 'pending' | 'received' | 'preparing' | 'ready' | 'completed' | 'cancelled';
+  status: 'pending' | 'received' | 'preparing' | 'ready' | 'cancelled';
   payment_intent_id: string;
   tracking_token?: string;
   pickup_time?: Date;
+  ready_at?: Date;
   created_at: Date;
 }
 
@@ -205,9 +206,26 @@ export class OrderModel {
   }
 
   static async updateStatus(id: number, status: Order['status']): Promise<Order | null> {
+    // If status is 'ready', set ready_at to current timestamp
+    if (status === 'ready') {
+      const result = await pool.query(
+        'UPDATE orders SET status = $1, ready_at = NOW() WHERE id = $2 RETURNING *',
+        [status, id]
+      );
+      return result.rows[0] || null;
+    }
+
     const result = await pool.query(
       'UPDATE orders SET status = $1 WHERE id = $2 RETURNING *',
       [status, id]
+    );
+    return result.rows[0] || null;
+  }
+
+  static async updateCustomerStatus(trackingToken: string, customerStatus: string): Promise<Order | null> {
+    const result = await pool.query(
+      'UPDATE orders SET customer_status = $1, customer_status_updated_at = NOW() WHERE tracking_token = $2 RETURNING *',
+      [customerStatus, trackingToken]
     );
     return result.rows[0] || null;
   }

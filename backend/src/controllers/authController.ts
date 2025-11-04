@@ -1,7 +1,8 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { UserModel } from '../models/User';
 import { generateToken } from '../utils/jwt';
 import { body, validationResult } from 'express-validator';
+import passport from 'passport';
 
 export const registerValidation = [
   body('email').isEmail().normalizeEmail(),
@@ -71,6 +72,12 @@ export async function login(req: Request, res: Response): Promise<void> {
       return;
     }
 
+    // Check if user has a password (not an OAuth-only user)
+    if (!user.password_hash) {
+      res.status(401).json({ error: 'Invalid email or password' });
+      return;
+    }
+
     // Verify password
     const isValidPassword = await UserModel.verifyPassword(password, user.password_hash);
     if (!isValidPassword) {
@@ -99,12 +106,14 @@ export async function login(req: Request, res: Response): Promise<void> {
 
 export async function getProfile(req: Request, res: Response): Promise<void> {
   try {
-    if (!req.user) {
+    const jwtUser = (req as any).user as { userId: number; email: string } | undefined;
+
+    if (!jwtUser) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
-    const user = await UserModel.findById(req.user.userId);
+    const user = await UserModel.findById(jwtUser.userId);
     if (!user) {
       res.status(404).json({ error: 'User not found' });
       return;
@@ -116,3 +125,28 @@ export async function getProfile(req: Request, res: Response): Promise<void> {
     res.status(500).json({ error: 'Internal server error' });
   }
 }
+
+// Google OAuth handlers
+export const googleAuth = passport.authenticate('google', {
+  scope: ['profile', 'email'],
+  session: false,
+});
+
+export const googleAuthCallback = (req: Request, res: Response, next: NextFunction) => {
+  passport.authenticate('google', { session: false }, (err: any, user: any, info: any) => {
+    if (err) {
+      console.error('Google OAuth error:', err);
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=oauth_failed`);
+    }
+
+    if (!user) {
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=oauth_failed`);
+    }
+
+    // Generate JWT token
+    const token = generateToken({ userId: user.id, email: user.email });
+
+    // Redirect to frontend with token
+    res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
+  })(req, res, next);
+};

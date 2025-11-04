@@ -1,4 +1,18 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// Auto-detect API URL based on current hostname
+// This allows the app to work both locally and on network
+const getApiUrl = () => {
+  // If VITE_API_URL is explicitly set and not localhost, use it
+  if (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) {
+    return import.meta.env.VITE_API_URL;
+  }
+
+  // Otherwise, use the current hostname with backend port
+  const hostname = window.location.hostname;
+  const protocol = window.location.protocol;
+  return `${protocol}//${hostname}:8888`;
+};
+
+const API_URL = getApiUrl();
 
 export interface ApiError {
   error: string;

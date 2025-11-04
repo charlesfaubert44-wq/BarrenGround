@@ -47,7 +47,30 @@ BarrenGround/
 - PostgreSQL 15+
 - npm or yarn
 
-### 1. Backend Setup
+### Quick Start (Recommended)
+
+```bash
+# Install all dependencies
+npm run install:all
+
+# Set up environment files
+# Copy .env.example to .env in each directory (backend, customer-frontend, employee-dashboard)
+
+# Set up database (PostgreSQL must be running)
+psql -U postgres -d postgres -f backend/src/config/schema.sql
+
+# Start all services at once
+npm run dev
+```
+
+This will start:
+- Backend API on `http://localhost:5000`
+- Customer Frontend on `http://localhost:8890`
+- Employee Dashboard on `http://localhost:8889`
+
+### Manual Setup (Individual Services)
+
+#### 1. Backend Setup
 
 ```bash
 cd backend
@@ -67,9 +90,9 @@ psql -U postgres -d postgres -f src/config/schema.sql
 npm run dev
 ```
 
-The backend will run on `http://localhost:3000`
+The backend will run on `http://localhost:5000`
 
-### 2. Customer Frontend Setup
+#### 2. Customer Frontend Setup
 
 ```bash
 cd customer-frontend
@@ -80,15 +103,15 @@ npm install
 # Create .env file from example
 cp .env.example .env
 
-# Update VITE_API_URL and VITE_STRIPE_PUBLISHABLE_KEY
+# Update VITE_API_URL, VITE_STRIPE_PUBLISHABLE_KEY, and VITE_WS_URL
 
 # Start development server
 npm run dev
 ```
 
-The customer frontend will run on `http://localhost:5173`
+The customer frontend will run on `http://localhost:8890`
 
-### 3. Employee Dashboard Setup
+#### 3. Employee Dashboard Setup
 
 ```bash
 cd employee-dashboard
@@ -105,33 +128,43 @@ cp .env.example .env
 npm run dev
 ```
 
-The employee dashboard will run on `http://localhost:5174`
+The employee dashboard will run on `http://localhost:8889`
 
 ## Environment Variables
 
 ### Backend (.env)
 ```
-PORT=3000
-DATABASE_URL=postgresql://user:password@localhost:5432/barrenground
+PORT=5000
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/barrenground
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 JWT_SECRET=your_secret_here
-FRONTEND_URL=http://localhost:5173
-EMPLOYEE_DASHBOARD_URL=http://localhost:5174
+FRONTEND_URL=http://localhost:8890
+EMPLOYEE_DASHBOARD_URL=http://localhost:8889
 NODE_ENV=development
 ```
 
 ### Customer Frontend (.env)
 ```
-VITE_API_URL=http://localhost:3000
+VITE_API_URL=http://localhost:5000
 VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
+VITE_WS_URL=ws://localhost:5000
 ```
 
 ### Employee Dashboard (.env)
 ```
-VITE_API_URL=http://localhost:3000
-VITE_WS_URL=ws://localhost:3000
+VITE_API_URL=http://localhost:5000
+VITE_WS_URL=ws://localhost:5000
 ```
+
+## Port Configuration
+
+| Service | Port |
+|---------|------|
+| Backend API | 5000 |
+| Customer Frontend | 8890 |
+| Employee Dashboard | 8889 |
+| PostgreSQL | 5432 |
 
 ## Features
 
