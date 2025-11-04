@@ -27,8 +27,11 @@ if (sendgridApiKey && sendgridApiKey.startsWith('SG.')) {
     console.warn('⚠️  SendGrid initialization failed:', error);
   }
 } else {
-  console.warn('⚠️  SendGrid is not configured. Email notifications will be logged only.');
-  console.warn('   To enable emails, set SENDGRID_API_KEY in your .env file');
+  // SendGrid is not configured - emails will be logged only
+  // This is expected during development/testing
+  if (process.env.NODE_ENV === 'development') {
+    console.log('ℹ️  SendGrid disabled - email notifications will be logged only');
+  }
 }
 
 const FROM_EMAIL = process.env.FROM_EMAIL || 'orders@barrengroundcoffee.com';
