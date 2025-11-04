@@ -3,8 +3,11 @@ import { OrderModel } from '../models/Order';
 import { UserMembershipModel } from '../models/UserMembership';
 import { MembershipUsageModel } from '../models/MembershipUsage';
 import { UserModel } from '../models/User';
+import { LoyaltyTransactionModel } from '../models/LoyaltyTransaction';
 import { body, validationResult } from 'express-validator';
 import Stripe from 'stripe';
+import { OrderItem } from '../types/api';
+import { EmailService } from '../services/emailService';
 
 // Initialize Stripe only if API key is provided and valid
 let stripe: Stripe | null = null;
@@ -34,6 +37,7 @@ export const createOrderValidation = [
   body('guest_name').optional().trim().isLength({ min: 1 }),
   body('guest_phone').optional().trim(),
   body('pickup_time').optional().isISO8601(),
+  body('scheduled_time').optional().isISO8601(),
 ];
 
 export async function createOrder(req: Request, res: Response): Promise<void> {
@@ -44,13 +48,32 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const { items, guest_email, guest_name, guest_phone, pickup_time, useMembership } = req.body;
+    const { items, guest_email, guest_name, guest_phone, pickup_time, scheduled_time, useMembership, redeemPoints } = req.body;
+
+    // Validate scheduled time if provided
+    let isScheduled = false;
+    let validatedScheduledTime: Date | undefined;
+
+    if (scheduled_time) {
+      const scheduledDate = new Date(scheduled_time);
+      const validation = await OrderModel.validateScheduledTime(scheduledDate);
+
+      if (!validation.valid) {
+        res.status(400).json({ error: validation.error });
+        return;
+      }
+
+      isScheduled = true;
+      validatedScheduledTime = scheduledDate;
+    }
 
     // Calculate total
     let total = items.reduce(
-      (sum: number, item: any) => sum + item.price_snapshot * item.quantity,
+      (sum: number, item: OrderItem) => sum + item.price_snapshot * item.quantity,
       0
     );
+
+    const originalTotal = total; // Store original for points calculation
 
     // Determine if guest or registered user
     const user_id = req.user?.userId;
@@ -67,6 +90,24 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
 
     let membershipUsed = false;
     let membershipId: number | undefined;
+    let pointsRedeemed = 0;
+    let pointsDiscount = 0;
+
+    // Handle loyalty points redemption (before membership)
+    if (redeemPoints && user_id) {
+      const points = parseInt(redeemPoints);
+
+      if (points >= 100 && points % 100 === 0) {
+        const result = await LoyaltyTransactionModel.redeemPoints(user_id, points);
+
+        if (result.success) {
+          pointsRedeemed = points;
+          pointsDiscount = result.creditAmount;
+          total -= pointsDiscount;
+          total = Math.max(0, total); // Ensure total doesn't go negative
+        }
+      }
+    }
 
     // Handle membership redemption
     if (useMembership && user_id) {
@@ -78,7 +119,7 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
 
         if (todayUsageCount === 0) {
           // Find the first coffee item and make it free
-          const coffeeItem = items.find((item: any) =>
+          const coffeeItem = items.find((item: OrderItem) =>
             item.menu_item_name.toLowerCase().includes('coffee') ||
             item.menu_item_name.toLowerCase().includes('espresso') ||
             item.menu_item_name.toLowerCase().includes('latte') ||
@@ -130,13 +171,15 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
       total,
       payment_intent_id: paymentIntent?.id || 'membership-free',
       pickup_time: pickup_time ? new Date(pickup_time) : undefined,
+      scheduled_time: validatedScheduledTime,
+      is_scheduled: isScheduled,
       items,
     });
 
     // Record membership usage if applicable
     if (membershipUsed && membershipId) {
       await UserMembershipModel.decrementCoffees(membershipId);
-      const coffeeItem = items.find((item: any) =>
+      const coffeeItem = items.find((item: OrderItem) =>
         item.menu_item_name.toLowerCase().includes('coffee') ||
         item.menu_item_name.toLowerCase().includes('espresso') ||
         item.menu_item_name.toLowerCase().includes('latte') ||
@@ -157,10 +200,37 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
       await UserModel.updateLastOrder(user_id, order.id);
     }
 
+    // Award loyalty points after order is created (1 point per dollar on original total)
+    // Points are awarded on original total before any discounts
+    if (user_id && originalTotal > 0) {
+      try {
+        await LoyaltyTransactionModel.earnPoints(
+          user_id,
+          order.id,
+          originalTotal,
+          `Purchase - Order #${order.id}`
+        );
+      } catch (error) {
+        console.error('Failed to award loyalty points:', error);
+        // Don't fail the order if points can't be awarded
+      }
+    }
+
+    // Send order confirmation email
+    try {
+      await EmailService.sendOrderConfirmation(order);
+    } catch (error) {
+      console.error('Failed to send order confirmation email:', error);
+      // Don't fail the order if email can't be sent
+    }
+
     res.status(201).json({
       order,
       clientSecret: paymentIntent?.client_secret || null,
       membershipUsed,
+      pointsRedeemed,
+      pointsDiscount,
+      pointsEarned: user_id ? Math.floor(originalTotal) : 0,
     });
   } catch (error) {
     console.error('Create order error:', error);
@@ -277,6 +347,19 @@ export async function updateOrderStatus(req: Request, res: Response): Promise<vo
     if (!order) {
       res.status(404).json({ error: 'Order not found' });
       return;
+    }
+
+    // Send email notification when order status changes to 'ready'
+    if (status === 'ready') {
+      try {
+        const fullOrder = await OrderModel.getById(id);
+        if (fullOrder) {
+          await EmailService.sendOrderReady(fullOrder);
+        }
+      } catch (error) {
+        console.error('Failed to send order ready email:', error);
+        // Don't fail the request if email can't be sent
+      }
     }
 
     res.json(order);

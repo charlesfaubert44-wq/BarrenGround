@@ -11,6 +11,7 @@ export interface User {
   oauth_provider_id?: string;
   stripe_customer_id?: string;
   last_order_id?: number;
+  role?: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -45,7 +46,7 @@ export class UserModel {
 
   static async findById(id: number): Promise<Omit<User, 'password_hash'> | null> {
     const result = await pool.query(
-      'SELECT id, email, name, phone, created_at FROM users WHERE id = $1',
+      'SELECT id, email, name, phone, role, created_at FROM users WHERE id = $1',
       [id]
     );
     return result.rows[0] || null;
@@ -57,7 +58,7 @@ export class UserModel {
 
   static async updateProfile(id: number, updates: Partial<Pick<User, 'name' | 'phone'>>): Promise<Omit<User, 'password_hash'> | null> {
     const fields: string[] = [];
-    const values: any[] = [];
+    const values: (string | number)[] = [];
     let paramCount = 1;
 
     if (updates.name !== undefined) {

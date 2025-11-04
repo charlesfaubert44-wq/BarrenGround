@@ -5,6 +5,7 @@ import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { useMembershipStore } from '../store/membershipStore';
 import { getMembershipStatus } from '../api/membership';
+import { getBalance } from '../api/loyalty';
 import { apiRequest } from '../api/client';
 
 export default function CheckoutPage() {
@@ -17,6 +18,10 @@ export default function CheckoutPage() {
   const [useMembership, setUseMembership] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
+  // Loyalty points
+  const [usePoints, setUsePoints] = useState(false);
+  const [pointsToRedeem, setPointsToRedeem] = useState(0);
+
   // Guest checkout form
   const [guestName, setGuestName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
@@ -27,6 +32,13 @@ export default function CheckoutPage() {
   const { data: statusData } = useQuery({
     queryKey: ['membershipStatus'],
     queryFn: getMembershipStatus,
+    enabled: isAuthenticated,
+  });
+
+  // Fetch loyalty points balance
+  const { data: loyaltyBalance } = useQuery({
+    queryKey: ['loyaltyBalance'],
+    queryFn: getBalance,
     enabled: isAuthenticated,
   });
 
@@ -75,7 +87,19 @@ export default function CheckoutPage() {
   }
 
   const subtotal = getTotalPrice();
-  const subtotalAfterDiscount = Math.max(0, subtotal - membershipDiscount);
+
+  // Calculate points discount (100 points = $5)
+  const pointsDiscount = usePoints && pointsToRedeem >= 100 ? (pointsToRedeem / 100) * 5 : 0;
+
+  // Calculate max redeemable points
+  const maxRedeemablePoints = loyaltyBalance?.points
+    ? Math.min(
+        Math.floor(loyaltyBalance.points / 100) * 100, // Round down to nearest 100
+        Math.floor((subtotal - membershipDiscount) / 5) * 100 // Can't exceed order total
+      )
+    : 0;
+
+  const subtotalAfterDiscount = Math.max(0, subtotal - membershipDiscount - pointsDiscount);
   const tax = subtotalAfterDiscount * 0.08;
   const total = subtotalAfterDiscount + tax;
 
@@ -146,6 +170,7 @@ export default function CheckoutPage() {
         total: total,
         pickupTime: pickupTime,
         useMembership: useMembership && canUseMembership,
+        redeemPoints: usePoints && pointsToRedeem >= 100 ? pointsToRedeem : undefined,
         guestInfo: isAuthenticated ? undefined : {
           name: guestName,
           email: guestEmail,
@@ -288,6 +313,73 @@ export default function CheckoutPage() {
                 </div>
                 <p className="text-green-100 text-sm mt-3 ml-8">
                   You have <strong>{membership?.coffees_remaining} coffees</strong> remaining this period
+                </p>
+              </div>
+            )}
+
+            {/* Loyalty Points Section */}
+            {isAuthenticated && loyaltyBalance && loyaltyBalance.points >= 100 && (
+              <div className="bg-gradient-to-r from-amber-800 to-orange-800 rounded-xl shadow-2xl p-6 border-4 border-amber-600/50 scale-in" style={{ animationDelay: canUseMembership ? '0.2s' : '0.1s' }}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      id="usePoints"
+                      checked={usePoints}
+                      onChange={(e) => {
+                        setUsePoints(e.target.checked);
+                        if (e.target.checked && maxRedeemablePoints >= 100) {
+                          setPointsToRedeem(Math.min(100, maxRedeemablePoints));
+                        } else {
+                          setPointsToRedeem(0);
+                        }
+                      }}
+                      disabled={maxRedeemablePoints < 100}
+                      className="w-5 h-5 rounded border-2 border-white focus:ring-2 focus:ring-amber-400 disabled:opacity-50"
+                    />
+                    <label htmlFor="usePoints" className="text-xl font-bold text-white cursor-pointer distressed-text">
+                      ⭐ USE LOYALTY POINTS
+                    </label>
+                  </div>
+                  {pointsDiscount > 0 && (
+                    <div className="bg-amber-600 text-white px-4 py-2 rounded-lg font-bold text-lg">
+                      -${pointsDiscount.toFixed(2)}
+                    </div>
+                  )}
+                </div>
+
+                {usePoints && maxRedeemablePoints >= 100 && (
+                  <div className="mt-4 space-y-3 bg-white/10 rounded-lg p-4">
+                    <div className="flex justify-between text-white text-sm">
+                      <span>Points to redeem:</span>
+                      <span className="font-bold">{pointsToRedeem} pts = ${((pointsToRedeem / 100) * 5).toFixed(2)}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={100}
+                      max={maxRedeemablePoints}
+                      step={100}
+                      value={pointsToRedeem}
+                      onChange={(e) => setPointsToRedeem(Number(e.target.value))}
+                      className="w-full h-2 bg-white/30 rounded-lg appearance-none cursor-pointer"
+                      style={{
+                        background: `linear-gradient(to right, #fff 0%, #fff ${((pointsToRedeem - 100) / (maxRedeemablePoints - 100)) * 100}%, rgba(255,255,255,0.3) ${((pointsToRedeem - 100) / (maxRedeemablePoints - 100)) * 100}%, rgba(255,255,255,0.3) 100%)`
+                      }}
+                    />
+                    <div className="flex justify-between text-xs text-amber-100">
+                      <span>100 pts ($5)</span>
+                      <span>{maxRedeemablePoints} pts (${((maxRedeemablePoints / 100) * 5).toFixed(2)})</span>
+                    </div>
+                  </div>
+                )}
+
+                <p className="text-amber-100 text-sm mt-3 ml-8">
+                  You have <strong>{loyaltyBalance.points} points</strong> available
+                  {maxRedeemablePoints < loyaltyBalance.points && maxRedeemablePoints >= 100 && (
+                    <span className="block mt-1 text-xs">
+                      (max {maxRedeemablePoints} redeemable on this order)
+                    </span>
+                  )}
                 </p>
               </div>
             )}
@@ -435,6 +527,12 @@ export default function CheckoutPage() {
                   <div className="flex justify-between text-green-400 text-lg">
                     <span className="font-bold">☕ Membership Discount</span>
                     <span className="font-bold">-${membershipDiscount.toFixed(2)}</span>
+                  </div>
+                )}
+                {usePoints && pointsDiscount > 0 && (
+                  <div className="flex justify-between text-amber-400 text-lg">
+                    <span className="font-bold">⭐ Points Discount</span>
+                    <span className="font-bold">-${pointsDiscount.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-stone-200 text-lg">

@@ -53,7 +53,7 @@ export class MenuItemModel {
 
   static async update(id: number, item: Partial<Omit<MenuItem, 'id' | 'created_at'>>): Promise<MenuItem | null> {
     const fields: string[] = [];
-    const values: any[] = [];
+    const values: (string | number | boolean)[] = [];
     let paramCount = 1;
 
     if (item.name !== undefined) {

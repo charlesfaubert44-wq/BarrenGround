@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { MenuItemModel } from '../models/MenuItem';
-import { body, validationResult } from 'express-validator';
+import { body, param, validationResult } from 'express-validator';
 
 export async function getAllMenuItems(req: Request, res: Response): Promise<void> {
   try {
@@ -76,12 +76,12 @@ export async function updateMenuItemAvailability(req: Request, res: Response): P
 }
 
 export const createMenuItemValidation = [
-  body('name').trim().isLength({ min: 1 }),
+  body('name').trim().notEmpty().isLength({ max: 255 }).withMessage('Name is required and must be 255 characters or less'),
   body('description').optional().trim(),
-  body('price').isFloat({ min: 0 }),
-  body('category').trim().isLength({ min: 1 }),
-  body('image_url').optional().isURL(),
-  body('available').optional().isBoolean(),
+  body('price').isFloat({ min: 0.01 }).withMessage('Price must be a positive number'),
+  body('category').isIn(['coffee', 'drip-coffee', 'cold-drinks', 'pastries', 'specialty', 'food']).withMessage('Category must be one of: coffee, drip-coffee, cold-drinks, pastries, specialty, food'),
+  body('image_url').optional().isURL().withMessage('Image URL must be a valid URL'),
+  body('available').optional().isBoolean().withMessage('Available must be a boolean value'),
 ];
 
 export async function createMenuItem(req: Request, res: Response): Promise<void> {
@@ -101,8 +101,24 @@ export async function createMenuItem(req: Request, res: Response): Promise<void>
   }
 }
 
+export const updateMenuItemValidation = [
+  param('id').isInt().withMessage('Menu item ID must be an integer'),
+  body('name').optional().trim().notEmpty().isLength({ max: 255 }).withMessage('Name must be 255 characters or less'),
+  body('description').optional().trim(),
+  body('price').optional().isFloat({ min: 0.01 }).withMessage('Price must be a positive number'),
+  body('category').optional().isIn(['coffee', 'drip-coffee', 'cold-drinks', 'pastries', 'specialty', 'food']).withMessage('Category must be one of: coffee, drip-coffee, cold-drinks, pastries, specialty, food'),
+  body('image_url').optional().isURL().withMessage('Image URL must be a valid URL'),
+  body('available').optional().isBoolean().withMessage('Available must be a boolean value'),
+];
+
 export async function updateMenuItem(req: Request, res: Response): Promise<void> {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
+
     const id = parseInt(req.params.id);
 
     if (isNaN(id)) {

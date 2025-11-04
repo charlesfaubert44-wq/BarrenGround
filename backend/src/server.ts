@@ -1,45 +1,96 @@
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
+import helmet from 'helmet';
+import { env } from './config/env';
 import authRoutes from './routes/authRoutes';
 import menuRoutes from './routes/menuRoutes';
 import orderRoutes from './routes/orderRoutes';
 import webhookRoutes from './routes/webhookRoutes';
 import pollingRoutes from './routes/pollingRoutes';
-
-dotenv.config();
+import promoRoutes from './routes/promoRoutes';
+import newsRoutes from './routes/newsRoutes';
+import schedulingRoutes from './routes/schedulingRoutes';
+import loyaltyRoutes from './routes/loyaltyRoutes';
+import { apiLimiter, authLimiter, orderLimiter } from './middleware/rateLimiter';
+import { enforceHTTPS } from './middleware/httpsRedirect';
+import { sanitizeInput } from './middleware/sanitize';
+import { requestLogger } from './middleware/requestLogger';
+import { startBirthdayBonusJob } from './jobs/birthdayBonus';
+import { startOrderReminderJob } from './jobs/orderReminders';
 
 const app = express();
 
-// Webhook routes (before body parsing middleware)
+// HTTPS enforcement in production
+if (env.NODE_ENV === 'production') {
+  app.use(enforceHTTPS);
+}
+
+// Security headers with Helmet
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true,
+  },
+}));
+
+// Request logging
+app.use(requestLogger);
+
+// Webhook routes (before body parsing and sanitization middleware)
 app.use('/webhooks', webhookRoutes);
 
 // Middleware
 app.use(cors({
   origin: [
-    process.env.FRONTEND_URL || 'http://localhost:5173',
-    process.env.EMPLOYEE_DASHBOARD_URL || 'http://localhost:5174',
+    env.FRONTEND_URL,
+    env.EMPLOYEE_DASHBOARD_URL,
   ],
   credentials: true,
 }));
 app.use(express.json());
+
+// Input sanitization (after body parsing, except webhooks)
+app.use('/api', sanitizeInput);
+
+// Rate limiting
+app.use('/api', apiLimiter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// API Routes
+// API Routes with specific rate limiters
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/menu', menuRoutes);
-app.use('/api/orders', orderRoutes);
+app.use('/api/orders', orderLimiter, orderRoutes);
 app.use('/api/polling', pollingRoutes);
+app.use('/api/promos', promoRoutes);
+app.use('/api/news', newsRoutes);
+app.use('/api/scheduling', schedulingRoutes);
+app.use('/api/loyalty', loyaltyRoutes);
+
+// Start scheduled jobs in non-production environments
+if (env.NODE_ENV !== 'production') {
+  startBirthdayBonusJob();
+  startOrderReminderJob();
+}
 
 // For local development
-if (process.env.NODE_ENV !== 'production') {
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+if (env.NODE_ENV !== 'production') {
+  app.listen(env.PORT, () => {
+    console.log(`Server running on port ${env.PORT}`);
   });
 }
 

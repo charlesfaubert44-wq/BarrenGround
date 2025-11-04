@@ -13,6 +13,7 @@ import {
   updateOrderStatusValidation,
 } from '../controllers/orderController';
 import { authenticateToken, optionalAuth } from '../middleware/auth';
+import { requireEmployee } from '../middleware/roleAuth';
 
 const router = Router();
 
@@ -32,15 +33,15 @@ router.get('/my-orders', authenticateToken, getUserOrders);
 router.get('/last-order', authenticateToken, getLastOrder);
 
 // Get orders by status (employee dashboard)
-router.get('/', authenticateToken, getOrdersByStatus);
+router.get('/', authenticateToken, requireEmployee, getOrdersByStatus);
 
 // Get recent orders (employee dashboard)
-router.get('/recent', authenticateToken, getRecentOrders);
+router.get('/recent', authenticateToken, requireEmployee, getRecentOrders);
 
-// Get single order
-router.get('/:id', authenticateToken, getOrder);
+// Get single order (employee dashboard)
+router.get('/:id', authenticateToken, requireEmployee, getOrder);
 
 // Update order status (employee)
-router.put('/:id/status', authenticateToken, updateOrderStatusValidation, updateOrderStatus);
+router.put('/:id/status', authenticateToken, requireEmployee, updateOrderStatusValidation, updateOrderStatus);
 
 export default router;

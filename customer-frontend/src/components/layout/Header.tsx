@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
+import PointsDisplay from '../PointsDisplay';
 
 export default function Header() {
   const navigate = useNavigate();
@@ -46,6 +47,7 @@ export default function Header() {
             <Link to="/membership" className="hover:text-stone-300 transition font-bold tracking-wider text-sm" style={{ letterSpacing: '0.08em' }}>
               ☕ MEMBERSHIP
             </Link>
+            {isAuthenticated && <PointsDisplay />}
             <Link to="/cart" className="relative hover:text-stone-300 transition font-bold tracking-wider text-sm" style={{ letterSpacing: '0.08em' }}>
               CART
               {itemCount > 0 && (
@@ -131,6 +133,16 @@ export default function Header() {
             >
               ☕ MEMBERSHIP
             </Link>
+            {isAuthenticated && (
+              <Link
+                to="/loyalty"
+                onClick={closeMobileMenu}
+                className="block py-3 px-4 hover:bg-stone-700 rounded-md transition font-bold tracking-wider text-sm border-2 border-stone-700"
+                style={{ letterSpacing: '0.08em' }}
+              >
+                ⭐ LOYALTY REWARDS
+              </Link>
+            )}
             <Link
               to="/cart"
               onClick={closeMobileMenu}

@@ -2,7 +2,9 @@ import { Request, Response } from 'express';
 import { MembershipPlanModel } from '../models/MembershipPlan';
 import { UserMembershipModel } from '../models/UserMembership';
 import { MembershipUsageModel } from '../models/MembershipUsage';
+import { UserModel } from '../models/User';
 import Stripe from 'stripe';
+import { EmailService } from '../services/emailService';
 
 // Initialize Stripe only if API key is provided and valid
 let stripe: Stripe | null = null;
@@ -11,7 +13,7 @@ const stripeKey = process.env.STRIPE_SECRET_KEY;
 if (stripeKey && stripeKey.startsWith('sk_')) {
   try {
     stripe = new Stripe(stripeKey, {
-      apiVersion: '2024-12-18.acacia',
+      apiVersion: '2025-10-29.clover',
     });
   } catch (error) {
     console.warn('⚠️  Stripe membership initialization failed:', error);
@@ -168,6 +170,17 @@ export async function createSubscription(req: Request, res: Response): Promise<v
       current_period_end: currentPeriodEnd,
       coffees_remaining: plan.coffees_per_interval,
     });
+
+    // Send welcome email
+    try {
+      const user = await UserModel.findById(req.user.userId);
+      if (user) {
+        await EmailService.sendMembershipWelcome(user, plan);
+      }
+    } catch (error) {
+      console.error('Failed to send membership welcome email:', error);
+      // Don't fail the subscription if email can't be sent
+    }
 
     res.status(201).json({
       membership,

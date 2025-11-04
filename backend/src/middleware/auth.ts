@@ -1,7 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken, JwtPayload } from '../utils/jwt';
-
-// Note: Using type assertion instead of declaration to avoid conflict with passport types
+import { verifyToken } from '../utils/jwt';
 
 export function authenticateToken(req: Request, res: Response, next: NextFunction): void {
   const authHeader = req.headers['authorization'];
@@ -19,7 +17,7 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
     return;
   }
 
-  (req as any).user = user;
+  req.user = user;
   next();
 }
 
@@ -30,7 +28,7 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction): v
   if (token) {
     const user = verifyToken(token);
     if (user) {
-      (req as any).user = user;
+      req.user = user;
     }
   }
 

@@ -1,5 +1,6 @@
 import pool from '../config/database';
 import { v4 as uuidv4 } from 'uuid';
+import { BusinessHoursModel } from './BusinessHours';
 
 export interface Order {
   id: number;
@@ -12,6 +13,9 @@ export interface Order {
   payment_intent_id: string;
   tracking_token?: string;
   pickup_time?: Date;
+  scheduled_time?: Date;
+  is_scheduled?: boolean;
+  reminder_sent?: boolean;
   ready_at?: Date;
   created_at: Date;
 }
@@ -30,6 +34,7 @@ export interface OrderItem {
 export interface OrderWithItems extends Order {
   items: OrderItem[];
   customer_name: string;
+  user_email?: string;
 }
 
 export interface CreateOrderData {
@@ -40,6 +45,8 @@ export interface CreateOrderData {
   total: number;
   payment_intent_id: string;
   pickup_time?: Date;
+  scheduled_time?: Date;
+  is_scheduled?: boolean;
   items: Array<{
     menu_item_id: number;
     menu_item_name: string;
@@ -61,8 +68,8 @@ export class OrderModel {
 
       // Insert order
       const orderResult = await client.query(
-        `INSERT INTO orders (user_id, guest_email, guest_name, guest_phone, total, status, payment_intent_id, tracking_token, pickup_time)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+        `INSERT INTO orders (user_id, guest_email, guest_name, guest_phone, total, status, payment_intent_id, tracking_token, pickup_time, scheduled_time, is_scheduled)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
         [
           orderData.user_id,
           orderData.guest_email,
@@ -73,6 +80,8 @@ export class OrderModel {
           orderData.payment_intent_id,
           tracking_token,
           orderData.pickup_time,
+          orderData.scheduled_time,
+          orderData.is_scheduled || false,
         ]
       );
 
@@ -113,7 +122,10 @@ export class OrderModel {
 
   static async getById(id: number): Promise<OrderWithItems | null> {
     const orderResult = await pool.query(
-      'SELECT * FROM orders WHERE id = $1',
+      `SELECT o.*, u.email as user_email
+       FROM orders o
+       LEFT JOIN users u ON o.user_id = u.id
+       WHERE o.id = $1`,
       [id]
     );
 
@@ -135,7 +147,10 @@ export class OrderModel {
 
   static async getByTrackingToken(token: string): Promise<OrderWithItems | null> {
     const orderResult = await pool.query(
-      'SELECT * FROM orders WHERE tracking_token = $1',
+      `SELECT o.*, u.email as user_email
+       FROM orders o
+       LEFT JOIN users u ON o.user_id = u.id
+       WHERE o.tracking_token = $1`,
       [token]
     );
 
@@ -157,7 +172,11 @@ export class OrderModel {
 
   static async getByUserId(userId: number): Promise<OrderWithItems[]> {
     const orderResult = await pool.query(
-      'SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC',
+      `SELECT o.*, u.email as user_email
+       FROM orders o
+       LEFT JOIN users u ON o.user_id = u.id
+       WHERE o.user_id = $1
+       ORDER BY o.created_at DESC`,
       [userId]
     );
 
@@ -183,7 +202,11 @@ export class OrderModel {
     const placeholders = statuses.map((_, i) => `$${i + 1}`).join(', ');
 
     const orderResult = await pool.query(
-      `SELECT * FROM orders WHERE status IN (${placeholders}) ORDER BY created_at ASC`,
+      `SELECT o.*, u.email as user_email
+       FROM orders o
+       LEFT JOIN users u ON o.user_id = u.id
+       WHERE o.status IN (${placeholders})
+       ORDER BY o.created_at ASC`,
       statuses
     );
 
@@ -232,7 +255,11 @@ export class OrderModel {
 
   static async getRecentOrders(limit: number = 50): Promise<OrderWithItems[]> {
     const orderResult = await pool.query(
-      'SELECT * FROM orders ORDER BY created_at DESC LIMIT $1',
+      `SELECT o.*, u.email as user_email
+       FROM orders o
+       LEFT JOIN users u ON o.user_id = u.id
+       ORDER BY o.created_at DESC
+       LIMIT $1`,
       [limit]
     );
 
@@ -252,5 +279,136 @@ export class OrderModel {
     }
 
     return orders;
+  }
+
+  /**
+   * Validate scheduled time for an order
+   */
+  static async validateScheduledTime(scheduledTime: Date): Promise<{
+    valid: boolean;
+    error?: string;
+  }> {
+    const now = new Date();
+
+    // Check minimum advance notice (30 minutes)
+    const minTime = new Date(now.getTime() + 30 * 60 * 1000);
+    if (scheduledTime < minTime) {
+      return {
+        valid: false,
+        error: 'Orders must be scheduled at least 30 minutes in advance',
+      };
+    }
+
+    // Check maximum advance (7 days)
+    const maxTime = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    if (scheduledTime > maxTime) {
+      return {
+        valid: false,
+        error: 'Orders can only be scheduled up to 7 days in advance',
+      };
+    }
+
+    // Check business hours
+    const isOpen = await BusinessHoursModel.isOpen(scheduledTime);
+    if (!isOpen) {
+      return {
+        valid: false,
+        error: 'Selected time is outside business hours',
+      };
+    }
+
+    // Check slot capacity
+    const capacity = await BusinessHoursModel.getSlotCapacityWithSettings(scheduledTime);
+    if (!capacity.available) {
+      return {
+        valid: false,
+        error: 'This time slot is fully booked. Please select another time.',
+      };
+    }
+
+    return { valid: true };
+  }
+
+  /**
+   * Get all orders scheduled for a specific date
+   */
+  static async getScheduledOrders(date: Date): Promise<OrderWithItems[]> {
+    // Create start and end of day for the given date
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const orderResult = await pool.query(
+      `SELECT * FROM orders
+       WHERE is_scheduled = true
+         AND scheduled_time >= $1
+         AND scheduled_time <= $2
+         AND status != 'cancelled'
+       ORDER BY scheduled_time ASC`,
+      [startOfDay, endOfDay]
+    );
+
+    const orders: OrderWithItems[] = [];
+
+    for (const order of orderResult.rows) {
+      const itemsResult = await pool.query(
+        'SELECT * FROM order_items WHERE order_id = $1',
+        [order.id]
+      );
+
+      orders.push({
+        ...order,
+        items: itemsResult.rows,
+        customer_name: order.guest_name || 'Registered User',
+      });
+    }
+
+    return orders;
+  }
+
+  /**
+   * Get orders that need reminder notifications
+   */
+  static async getOrdersNeedingReminders(): Promise<OrderWithItems[]> {
+    const now = new Date();
+    const reminderTime = new Date(now.getTime() + 15 * 60 * 1000); // 15 minutes from now
+
+    const orderResult = await pool.query(
+      `SELECT * FROM orders
+       WHERE is_scheduled = true
+         AND reminder_sent = false
+         AND scheduled_time BETWEEN $1 AND $2
+         AND status != 'cancelled'`,
+      [now, reminderTime]
+    );
+
+    const orders: OrderWithItems[] = [];
+
+    for (const order of orderResult.rows) {
+      const itemsResult = await pool.query(
+        'SELECT * FROM order_items WHERE order_id = $1',
+        [order.id]
+      );
+
+      orders.push({
+        ...order,
+        items: itemsResult.rows,
+        customer_name: order.guest_name || 'Registered User',
+      });
+    }
+
+    return orders;
+  }
+
+  /**
+   * Mark reminder as sent
+   */
+  static async markReminderSent(orderId: number): Promise<void> {
+    await pool.query(
+      'UPDATE orders SET reminder_sent = true WHERE id = $1',
+      [orderId]
+    );
   }
 }
