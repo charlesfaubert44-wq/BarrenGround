@@ -10,14 +10,14 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
     return;
   }
 
-  const user = verifyToken(token);
+  const payload = verifyToken(token);
 
-  if (!user) {
+  if (!payload) {
     res.status(403).json({ error: 'Invalid or expired token' });
     return;
   }
 
-  req.user = user;
+  req.user = { ...payload, id: payload.userId };
   next();
 }
 
@@ -26,9 +26,9 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction): v
   const token = authHeader && authHeader.split(' ')[1];
 
   if (token) {
-    const user = verifyToken(token);
-    if (user) {
-      req.user = user;
+    const payload = verifyToken(token);
+    if (payload) {
+      req.user = { ...payload, id: payload.userId };
     }
   }
 

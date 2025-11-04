@@ -2,10 +2,12 @@ import { JwtPayload } from '../utils/jwt';
 
 declare global {
   namespace Express {
-    interface User extends JwtPayload {}
+    interface User extends JwtPayload {
+      id: number;
+    }
 
     interface Request {
-      user?: JwtPayload;
+      user?: User;
       employee?: {
         id: number;
         email: string;

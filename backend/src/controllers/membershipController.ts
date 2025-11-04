@@ -147,7 +147,7 @@ export async function createSubscription(req: Request, res: Response): Promise<v
               interval: plan.interval as 'week' | 'month' | 'year',
             },
             unit_amount: Math.round(plan.price * 100), // Convert to cents
-          },
+          } as any, // Stripe types may be outdated, this is valid per Stripe API docs
         },
       ],
       payment_behavior: 'default_incomplete',
@@ -156,8 +156,9 @@ export async function createSubscription(req: Request, res: Response): Promise<v
     });
 
     // Calculate period dates
-    const currentPeriodStart = new Date(subscription.current_period_start * 1000);
-    const currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+    const sub = subscription as any;
+    const currentPeriodStart = new Date((sub.current_period_start as number) * 1000);
+    const currentPeriodEnd = new Date((sub.current_period_end as number) * 1000);
 
     // Create membership record
     const membership = await UserMembershipModel.create({
@@ -184,9 +185,7 @@ export async function createSubscription(req: Request, res: Response): Promise<v
 
     res.status(201).json({
       membership,
-      clientSecret: (subscription.latest_invoice as Stripe.Invoice)?.payment_intent
-        ? ((subscription.latest_invoice as Stripe.Invoice).payment_intent as Stripe.PaymentIntent).client_secret
-        : null,
+      clientSecret: (subscription.latest_invoice as Stripe.Invoice & { payment_intent?: Stripe.PaymentIntent })?.payment_intent?.client_secret || null,
     });
   } catch (error) {
     console.error('Create subscription error:', error);

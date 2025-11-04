@@ -34,7 +34,7 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
             oauth_provider_id: profile.id,
           });
 
-          return done(null, user);
+          return done(null, user as unknown as Express.User);
         } catch (error) {
           return done(error as Error, undefined);
         }
@@ -47,14 +47,13 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
 
 // Serialize user for session (we won't use sessions, but passport requires this)
 passport.serializeUser((user: Express.User, done) => {
-  const userWithId = user as { id: number };
-  done(null, userWithId.id);
+  done(null, user.id);
 });
 
 passport.deserializeUser(async (id: number, done) => {
   try {
     const user = await UserModel.findById(id);
-    done(null, user);
+    done(null, user as unknown as Express.User);
   } catch (error) {
     done(error as Error, null);
   }

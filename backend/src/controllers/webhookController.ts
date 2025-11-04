@@ -146,8 +146,9 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription): Prom
     if (subscription.status === 'active') {
       const plan = await MembershipPlanModel.findById(membership.plan_id);
       if (plan) {
-        const periodStart = new Date(subscription.current_period_start * 1000);
-        const periodEnd = new Date(subscription.current_period_end * 1000);
+        const sub = subscription as any;
+        const periodStart = new Date((sub.current_period_start as number) * 1000);
+        const periodEnd = new Date((sub.current_period_end as number) * 1000);
         await UserMembershipModel.resetCoffees(
           membership.id,
           plan.coffees_per_interval,
@@ -175,8 +176,9 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<v
   console.log('Invoice payment succeeded:', invoice.id);
 
   // If this is a subscription invoice, ensure membership is active
-  if (invoice.subscription && typeof invoice.subscription === 'string') {
-    const membership = await UserMembershipModel.findByStripeSubscriptionId(invoice.subscription);
+  const invoiceWithSub = invoice as Stripe.Invoice & { subscription?: string };
+  if (invoiceWithSub.subscription && typeof invoiceWithSub.subscription === 'string') {
+    const membership = await UserMembershipModel.findByStripeSubscriptionId(invoiceWithSub.subscription);
 
     if (membership && membership.status !== 'active') {
       await UserMembershipModel.updateStatus(membership.id, 'active');
@@ -189,8 +191,9 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void
   console.log('Invoice payment failed:', invoice.id);
 
   // Mark membership as past_due
-  if (invoice.subscription && typeof invoice.subscription === 'string') {
-    const membership = await UserMembershipModel.findByStripeSubscriptionId(invoice.subscription);
+  const invoiceWithSub = invoice as Stripe.Invoice & { subscription?: string };
+  if (invoiceWithSub.subscription && typeof invoiceWithSub.subscription === 'string') {
+    const membership = await UserMembershipModel.findByStripeSubscriptionId(invoiceWithSub.subscription);
 
     if (membership) {
       await UserMembershipModel.updateStatus(membership.id, 'past_due');

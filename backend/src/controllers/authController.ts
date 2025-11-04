@@ -160,8 +160,7 @@ export const googleAuthCallback = (req: Request, res: Response, next: NextFuncti
     }
 
     // Generate JWT token - user is guaranteed to have id and email here
-    const userWithId = user as { id: number; email: string };
-    const token = generateToken({ userId: userWithId.id, email: userWithId.email });
+    const token = generateToken({ userId: user.id, email: user.email });
 
     // Set secure cookie
     res.cookie('token', token, {
