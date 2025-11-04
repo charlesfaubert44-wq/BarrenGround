@@ -1,5 +1,5 @@
 import pool from '../config/database';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { BusinessHoursModel } from './BusinessHours';
 
 export interface Order {
@@ -64,7 +64,7 @@ export class OrderModel {
       await client.query('BEGIN');
 
       // Create tracking token for guest orders
-      const tracking_token = orderData.user_id ? null : uuidv4();
+      const tracking_token = orderData.user_id ? null : randomUUID();
 
       // Insert order
       const orderResult = await client.query(
