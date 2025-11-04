@@ -20,6 +20,10 @@ import { startOrderReminderJob } from './jobs/orderReminders';
 
 const app = express();
 
+// Trust proxy for Vercel/serverless environments
+// This is required for rate limiters to work correctly
+app.set('trust proxy', true);
+
 // HTTPS enforcement in production
 if (env.NODE_ENV === 'production') {
   app.use(enforceHTTPS);
