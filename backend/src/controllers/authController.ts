@@ -23,18 +23,31 @@ export async function register(req: Request, res: Response): Promise<void> {
 
     const { email, password, name, phone } = req.body;
 
-    // Check if user already exists
-    const existingUser = await UserModel.findByEmail(email);
-    if (existingUser) {
-      res.status(400).json({ error: 'Email already registered' });
+    if (!req.shop) {
+      res.status(500).json({ error: 'Shop context not found' });
       return;
     }
 
-    // Create user
-    const user = await UserModel.create({ email, password, name, phone });
+    // Check if user exists in THIS shop
+    const existingUser = await UserModel.findByEmail(email, req.shop.id);
+    if (existingUser) {
+      res.status(409).json({ error: 'User already exists' });
+      return;
+    }
 
-    // Generate token
-    const token = generateToken({ userId: user.id, email: user.email });
+    const user = await UserModel.create({
+      email,
+      password,
+      name,
+      phone,
+      shop_id: req.shop.id // Add shop_id
+    });
+
+    const token = generateToken({
+      userId: user.id,
+      email: user.email,
+      shopId: req.shop.id // Add to JWT
+    });
 
     // Set secure cookie
     res.cookie('token', token, {
@@ -75,28 +88,30 @@ export async function login(req: Request, res: Response): Promise<void> {
 
     const { email, password } = req.body;
 
-    // Find user
-    const user = await UserModel.findByEmail(email);
-    if (!user) {
-      res.status(401).json({ error: 'Invalid email or password' });
+    if (!req.shop) {
+      res.status(500).json({ error: 'Shop context not found' });
       return;
     }
 
-    // Check if user has a password (not an OAuth-only user)
-    if (!user.password_hash) {
-      res.status(401).json({ error: 'Invalid email or password' });
+    // Find user in THIS shop only
+    const user = await UserModel.findByEmail(email, req.shop.id);
+    if (!user || !user.password_hash) {
+      res.status(401).json({ error: 'Invalid credentials' });
       return;
     }
 
-    // Verify password
-    const isValidPassword = await UserModel.verifyPassword(password, user.password_hash);
-    if (!isValidPassword) {
-      res.status(401).json({ error: 'Invalid email or password' });
+    const isValid = await UserModel.verifyPassword(password, user.password_hash);
+    if (!isValid) {
+      res.status(401).json({ error: 'Invalid credentials' });
       return;
     }
 
-    // Generate token
-    const token = generateToken({ userId: user.id, email: user.email });
+    const token = generateToken({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      shopId: req.shop.id // Add to JWT
+    });
 
     // Set secure cookie
     res.cookie('token', token, {
@@ -106,16 +121,8 @@ export async function login(req: Request, res: Response): Promise<void> {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
-    res.json({
-      message: 'Login successful',
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        phone: user.phone,
-      },
-    });
+    const { password_hash, ...userWithoutPassword } = user;
+    res.json({ user: userWithoutPassword, token });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -129,13 +136,14 @@ export async function getProfile(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const user = await UserModel.findById(req.user.userId);
+    // Verify user belongs to current shop
+    const user = await UserModel.findById(req.user.userId, req.shop?.id);
     if (!user) {
       res.status(404).json({ error: 'User not found' });
       return;
     }
 
-    res.json({ user });
+    res.json(user);
   } catch (error) {
     console.error('Get profile error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -159,8 +167,16 @@ export const googleAuthCallback = (req: Request, res: Response, next: NextFuncti
       return res.redirect(`${process.env.FRONTEND_URL}/login?error=oauth_failed`);
     }
 
+    if (!req.shop) {
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=shop_context_missing`);
+    }
+
     // Generate JWT token - user is guaranteed to have id and email here
-    const token = generateToken({ userId: user.id, email: user.email });
+    const token = generateToken({
+      userId: user.id,
+      email: user.email,
+      shopId: req.shop.id // Add to JWT
+    });
 
     // Set secure cookie
     res.cookie('token', token, {
@@ -198,7 +214,12 @@ export async function requestPasswordReset(req: Request, res: Response): Promise
 
     const { email } = req.body;
 
-    const user = await UserModel.findByEmail(email);
+    if (!req.shop) {
+      res.status(500).json({ error: 'Shop context not found' });
+      return;
+    }
+
+    const user = await UserModel.findByEmail(email, req.shop.id);
 
     // Don't reveal if user exists for security reasons
     if (!user) {
@@ -214,7 +235,7 @@ export async function requestPasswordReset(req: Request, res: Response): Promise
 
     // Generate reset token (JWT with 1 hour expiry)
     const resetToken = jwt.sign(
-      { userId: user.id, type: 'password-reset' },
+      { userId: user.id, type: 'password-reset', shopId: req.shop.id },
       process.env.JWT_SECRET!,
       { expiresIn: '1h' }
     );

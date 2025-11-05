@@ -15,8 +15,9 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
         clientSecret: GOOGLE_CLIENT_SECRET,
         callbackURL: GOOGLE_CALLBACK_URL,
         scope: ['profile', 'email'],
+        passReqToCallback: true, // Enable access to req object
       },
-      async (_accessToken: string, _refreshToken: string, profile: Profile, done: VerifyCallback) => {
+      async (req: any, _accessToken: string, _refreshToken: string, profile: Profile, done: VerifyCallback) => {
         try {
           // Extract user info from Google profile
           const email = profile.emails?.[0]?.value;
@@ -26,12 +27,18 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
             return done(new Error('No email found in Google profile'), undefined);
           }
 
-          // Find or create user
+          // Check for shop context
+          if (!req.shop) {
+            return done(new Error('Shop context not found'), undefined);
+          }
+
+          // Find or create user with shop_id
           const user = await UserModel.findOrCreateOAuthUser({
             email,
             name,
             oauth_provider: 'google',
             oauth_provider_id: profile.id,
+            shop_id: req.shop.id, // Add shop_id
           });
 
           return done(null, user as unknown as Express.User);
@@ -52,6 +59,8 @@ passport.serializeUser((user: Express.User, done) => {
 
 passport.deserializeUser(async (id: number, done) => {
   try {
+    // Note: deserializeUser doesn't have access to req.shop
+    // In our multi-tenant setup, we rely on JWT tokens instead of sessions
     const user = await UserModel.findById(id);
     done(null, user as unknown as Express.User);
   } catch (error) {
