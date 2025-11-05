@@ -36,10 +36,10 @@ export async function getOrdersUpdatedSince(req: Request, res: Response): Promis
         ) FILTER (WHERE oi.id IS NOT NULL), '[]') as items
       FROM orders o
       LEFT JOIN order_items oi ON o.id = oi.order_id
-      WHERE o.updated_at > $1
+      WHERE o.updated_at > $1 AND o.shop_id = $2
       GROUP BY o.id
       ORDER BY o.updated_at DESC`,
-      [sinceDate]
+      [sinceDate, req.shop!.id]
     );
 
     res.json(result.rows);
@@ -58,8 +58,9 @@ export async function getOrderStatusCounts(req: Request, res: Response): Promise
     const result = await pool.query(
       `SELECT status, COUNT(*) as count
       FROM orders
-      WHERE status IN ('received', 'preparing', 'ready')
-      GROUP BY status`
+      WHERE status IN ('received', 'preparing', 'ready') AND shop_id = $1
+      GROUP BY status`,
+      [req.shop!.id]
     );
 
     const counts: Record<string, number> = {

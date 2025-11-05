@@ -4,7 +4,7 @@ import { body, validationResult } from 'express-validator';
 
 export async function getAllPromos(req: Request, res: Response): Promise<void> {
   try {
-    const promos = await PromoModel.findAll();
+    const promos = await PromoModel.findAll(req.shop!.id);
     res.json(promos);
   } catch (error) {
     console.error('Get all promos error:', error);
@@ -21,7 +21,7 @@ export async function getPromo(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const promo = await PromoModel.findById(id);
+    const promo = await PromoModel.findById(id, req.shop!.id);
 
     if (!promo) {
       res.status(404).json({ error: 'Promo not found' });
@@ -37,7 +37,7 @@ export async function getPromo(req: Request, res: Response): Promise<void> {
 
 export async function getActivePromos(req: Request, res: Response): Promise<void> {
   try {
-    const promos = await PromoModel.findActive();
+    const promos = await PromoModel.findActive(req.shop!.id);
     res.json(promos);
   } catch (error) {
     console.error('Get active promos error:', error);
@@ -96,7 +96,7 @@ export async function updatePromo(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const promo = await PromoModel.update(id, req.body);
+    const promo = await PromoModel.update(id, req.body, req.shop!.id);
 
     if (!promo) {
       res.status(404).json({ error: 'Promo not found' });
@@ -130,7 +130,7 @@ export async function updatePromoActive(req: Request, res: Response): Promise<vo
     }
 
     const { active } = req.body;
-    const promo = await PromoModel.updateActive(id, active);
+    const promo = await PromoModel.updateActive(id, active, req.shop!.id);
 
     if (!promo) {
       res.status(404).json({ error: 'Promo not found' });
@@ -153,7 +153,7 @@ export async function deletePromo(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const success = await PromoModel.delete(id);
+    const success = await PromoModel.delete(id, req.shop!.id);
 
     if (!success) {
       res.status(404).json({ error: 'Promo not found' });

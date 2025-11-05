@@ -7,8 +7,8 @@ export async function getAllMenuItems(req: Request, res: Response): Promise<void
     const availableOnly = req.query.available === 'true';
 
     const items = availableOnly
-      ? await MenuItemModel.getAvailable()
-      : await MenuItemModel.getAll();
+      ? await MenuItemModel.getAvailable(req.shop!.id)
+      : await MenuItemModel.getAll(req.shop!.id);
 
     res.json(items);
   } catch (error) {
@@ -26,7 +26,7 @@ export async function getMenuItem(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const item = await MenuItemModel.getById(id);
+    const item = await MenuItemModel.getById(id, req.shop!.id);
 
     if (!item) {
       res.status(404).json({ error: 'Menu item not found' });
@@ -61,7 +61,7 @@ export async function updateMenuItemAvailability(req: Request, res: Response): P
 
     const { available } = req.body;
 
-    const item = await MenuItemModel.updateAvailability(id, available);
+    const item = await MenuItemModel.updateAvailability(id, available, req.shop!.id);
 
     if (!item) {
       res.status(404).json({ error: 'Menu item not found' });
@@ -92,7 +92,7 @@ export async function createMenuItem(req: Request, res: Response): Promise<void>
       return;
     }
 
-    const item = await MenuItemModel.create(req.body);
+    const item = await MenuItemModel.create(req.body, req.shop!.id);
 
     res.status(201).json(item);
   } catch (error) {
@@ -126,7 +126,7 @@ export async function updateMenuItem(req: Request, res: Response): Promise<void>
       return;
     }
 
-    const item = await MenuItemModel.update(id, req.body);
+    const item = await MenuItemModel.update(id, req.body, req.shop!.id);
 
     if (!item) {
       res.status(404).json({ error: 'Menu item not found' });
@@ -149,7 +149,7 @@ export async function deleteMenuItem(req: Request, res: Response): Promise<void>
       return;
     }
 
-    const success = await MenuItemModel.delete(id);
+    const success = await MenuItemModel.delete(id, req.shop!.id);
 
     if (!success) {
       res.status(404).json({ error: 'Menu item not found' });

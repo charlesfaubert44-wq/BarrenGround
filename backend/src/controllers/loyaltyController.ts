@@ -8,7 +8,7 @@ import pool from '../config/database';
 export const getBalance = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.user!.id;
-    const balance = await LoyaltyTransactionModel.getUserBalance(userId);
+    const balance = await LoyaltyTransactionModel.getUserBalance(userId, req.shop!.id);
     const value = LoyaltyTransactionModel.getPointsValue(balance);
 
     res.json({
@@ -30,7 +30,7 @@ export const getHistory = async (req: Request, res: Response): Promise<void> => 
     const userId = req.user!.id;
     const limit = parseInt(req.query.limit as string) || 50;
 
-    const history = await LoyaltyTransactionModel.getUserHistory(userId, limit);
+    const history = await LoyaltyTransactionModel.getUserHistory(userId, req.shop!.id, limit);
 
     res.json({ history });
   } catch (error) {
@@ -70,7 +70,7 @@ export const redeemPoints = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const result = await LoyaltyTransactionModel.redeemPoints(userId, points);
+    const result = await LoyaltyTransactionModel.redeemPoints(userId, points, req.shop!.id);
 
     if (!result.success) {
       res.status(400).json({
@@ -152,7 +152,8 @@ export const checkBirthdayBonus = async (req: Request, res: Response): Promise<v
       userId,
       50,
       'birthday',
-      `Birthday bonus ${currentYear}`
+      `Birthday bonus ${currentYear}`,
+      req.shop!.id
     );
 
     // Update last birthday bonus year
@@ -193,7 +194,7 @@ export const getMaxRedeemable = async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    const balance = await LoyaltyTransactionModel.getUserBalance(userId);
+    const balance = await LoyaltyTransactionModel.getUserBalance(userId, req.shop!.id);
     const maxPoints = LoyaltyTransactionModel.getMaxRedeemablePoints(orderTotalNum, balance);
 
     res.json({

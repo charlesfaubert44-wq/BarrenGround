@@ -4,7 +4,7 @@ import { body, validationResult } from 'express-validator';
 
 export async function getAllNews(req: Request, res: Response): Promise<void> {
   try {
-    const news = await NewsModel.findAll();
+    const news = await NewsModel.findAll(req.shop!.id);
     res.json(news);
   } catch (error) {
     console.error('Get all news error:', error);
@@ -21,7 +21,7 @@ export async function getNewsItem(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const news = await NewsModel.findById(id);
+    const news = await NewsModel.findById(id, req.shop!.id);
 
     if (!news) {
       res.status(404).json({ error: 'News not found' });
@@ -37,7 +37,7 @@ export async function getNewsItem(req: Request, res: Response): Promise<void> {
 
 export async function getActiveNews(req: Request, res: Response): Promise<void> {
   try {
-    const news = await NewsModel.findActive();
+    const news = await NewsModel.findActive(req.shop!.id);
     res.json(news);
   } catch (error) {
     console.error('Get active news error:', error);
@@ -92,7 +92,7 @@ export async function updateNews(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const news = await NewsModel.update(id, req.body);
+    const news = await NewsModel.update(id, req.body, req.shop!.id);
 
     if (!news) {
       res.status(404).json({ error: 'News not found' });
@@ -126,7 +126,7 @@ export async function updateNewsActive(req: Request, res: Response): Promise<voi
     }
 
     const { active } = req.body;
-    const news = await NewsModel.updateActive(id, active);
+    const news = await NewsModel.updateActive(id, active, req.shop!.id);
 
     if (!news) {
       res.status(404).json({ error: 'News not found' });
@@ -149,7 +149,7 @@ export async function deleteNews(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const success = await NewsModel.delete(id);
+    const success = await NewsModel.delete(id, req.shop!.id);
 
     if (!success) {
       res.status(404).json({ error: 'News not found' });

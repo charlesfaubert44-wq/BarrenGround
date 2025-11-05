@@ -40,7 +40,7 @@ export async function getAvailableSlots(req: Request, res: Response): Promise<vo
     }
 
     // Get available slots
-    const slots = await BusinessHoursModel.getAvailableSlots(requestedDate);
+    const slots = await BusinessHoursModel.getAvailableSlots(requestedDate, req.shop!.id);
 
     res.json({
       date: date,
@@ -59,7 +59,7 @@ export async function getAvailableSlots(req: Request, res: Response): Promise<vo
  */
 export async function getBusinessHours(req: Request, res: Response): Promise<void> {
   try {
-    const hours = await BusinessHoursModel.getAll();
+    const hours = await BusinessHoursModel.getAll(req.shop!.id);
 
     // Format response for easier consumption
     const formattedHours = hours.map(h => ({
@@ -102,7 +102,7 @@ export async function updateBusinessHours(req: Request, res: Response): Promise<
     if (maxOrdersPerSlot !== undefined) updateData.max_orders_per_slot = maxOrdersPerSlot;
     if (slotDuration !== undefined) updateData.slot_duration_minutes = slotDuration;
 
-    const updated = await BusinessHoursModel.update(dayOfWeek, updateData);
+    const updated = await BusinessHoursModel.update(dayOfWeek, updateData, req.shop!.id);
 
     if (!updated) {
       res.status(404).json({ error: 'Business hours not found for this day' });
@@ -142,7 +142,7 @@ export async function getScheduledOrdersForDate(req: Request, res: Response): Pr
     }
 
     // Get scheduled orders
-    const orders = await OrderModel.getScheduledOrders(requestedDate);
+    const orders = await OrderModel.getScheduledOrders(requestedDate, req.shop!.id);
 
     // Group orders by time slot
     const ordersByTime: { [key: string]: any[] } = {};
@@ -198,7 +198,7 @@ export async function getSlotCapacity(req: Request, res: Response): Promise<void
     }
 
     // Get slot capacity
-    const capacity = await BusinessHoursModel.getSlotCapacityWithSettings(requestedDateTime);
+    const capacity = await BusinessHoursModel.getSlotCapacityWithSettings(requestedDateTime, req.shop!.id);
 
     res.json({
       datetime: datetime,

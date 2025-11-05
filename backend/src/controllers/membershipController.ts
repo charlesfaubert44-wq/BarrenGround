@@ -23,7 +23,7 @@ if (stripeKey && stripeKey.startsWith('sk_')) {
 // Get all available membership plans
 export async function getPlans(req: Request, res: Response): Promise<void> {
   try {
-    const plans = await MembershipPlanModel.findAll();
+    const plans = await MembershipPlanModel.findAll(req.shop!.id);
     res.json({ plans });
   } catch (error) {
     console.error('Get plans error:', error);
@@ -39,7 +39,7 @@ export async function getMembershipStatus(req: Request, res: Response): Promise<
       return;
     }
 
-    const membership = await UserMembershipModel.findActiveByUserId(req.user.userId);
+    const membership = await UserMembershipModel.findActiveByUserId(req.user.userId, req.shop!.id);
 
     if (!membership) {
       res.json({ membership: null });
@@ -51,7 +51,7 @@ export async function getMembershipStatus(req: Request, res: Response): Promise<
     const todayUsageCount = await MembershipUsageModel.getTodayUsageByMembershipId(membership.id);
 
     // Get plan details
-    const plan = await MembershipPlanModel.findById(membership.plan_id);
+    const plan = await MembershipPlanModel.findById(membership.plan_id, req.shop!.id);
 
     res.json({
       membership: {
@@ -88,14 +88,14 @@ export async function createSubscription(req: Request, res: Response): Promise<v
     const { planId, paymentMethodId } = req.body;
 
     // Check if user already has an active membership
-    const existingMembership = await UserMembershipModel.findActiveByUserId(req.user.userId);
+    const existingMembership = await UserMembershipModel.findActiveByUserId(req.user.userId, req.shop!.id);
     if (existingMembership) {
       res.status(400).json({ error: 'You already have an active membership' });
       return;
     }
 
     // Get plan details
-    const plan = await MembershipPlanModel.findById(planId);
+    const plan = await MembershipPlanModel.findById(planId, req.shop!.id);
     if (!plan) {
       res.status(404).json({ error: 'Membership plan not found' });
       return;
@@ -210,7 +210,7 @@ export async function cancelSubscription(req: Request, res: Response): Promise<v
       return;
     }
 
-    const membership = await UserMembershipModel.findActiveByUserId(req.user.userId);
+    const membership = await UserMembershipModel.findActiveByUserId(req.user.userId, req.shop!.id);
     if (!membership) {
       res.status(404).json({ error: 'No active membership found' });
       return;
@@ -227,7 +227,7 @@ export async function cancelSubscription(req: Request, res: Response): Promise<v
     });
 
     // Update membership record
-    await UserMembershipModel.cancelAtPeriodEnd(membership.id);
+    await UserMembershipModel.cancelAtPeriodEnd(membership.id, req.shop!.id);
 
     res.json({
       message: 'Subscription will be cancelled at the end of the current period',
@@ -252,7 +252,7 @@ export async function redeemCoffee(req: Request, res: Response): Promise<void> {
 
     const { coffeeName } = req.body;
 
-    const membership = await UserMembershipModel.findActiveByUserId(req.user.userId);
+    const membership = await UserMembershipModel.findActiveByUserId(req.user.userId, req.shop!.id);
     if (!membership) {
       res.status(404).json({ error: 'No active membership found' });
       return;
@@ -272,7 +272,7 @@ export async function redeemCoffee(req: Request, res: Response): Promise<void> {
     }
 
     // Decrement coffees
-    const updated = await UserMembershipModel.decrementCoffees(membership.id);
+    const updated = await UserMembershipModel.decrementCoffees(membership.id, req.shop!.id);
     if (!updated) {
       res.status(500).json({ error: 'Failed to redeem coffee' });
       return;
