@@ -3,6 +3,7 @@ import { OrderWithItems } from '../models/Order';
 import { User } from '../models/User';
 import { MembershipPlan } from '../models/MembershipPlan';
 import { UserMembership } from '../models/UserMembership';
+import { Shop } from '../models/Shop';
 import {
   renderOrderConfirmationEmail,
   renderOrderReadyEmail,
@@ -14,35 +15,29 @@ import {
 } from '../templates/emailTemplates';
 import { logEmailSent } from '../utils/emailLogger';
 
-// Initialize SendGrid only if API key is provided
-let sendgridConfigured = false;
-const sendgridApiKey = process.env.SENDGRID_API_KEY;
-
-if (sendgridApiKey && sendgridApiKey.startsWith('SG.')) {
-  try {
-    sgMail.setApiKey(sendgridApiKey);
-    sendgridConfigured = true;
-    console.log('✅ SendGrid email service initialized successfully');
-  } catch (error) {
-    console.warn('⚠️  SendGrid initialization failed:', error);
-  }
-} else {
-  // SendGrid is not configured - emails will be logged only
-  // This is expected during development/testing
-  if (process.env.NODE_ENV === 'development') {
-    console.log('ℹ️  SendGrid disabled - email notifications will be logged only');
-  }
-}
-
-const FROM_EMAIL = process.env.FROM_EMAIL || 'orders@barrengroundcoffee.com';
-const FROM_NAME = process.env.EMAIL_FROM_NAME || 'Barren Ground Coffee';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:8890';
 
 export class EmailService {
   /**
+   * Get SendGrid client for shop
+   */
+  private static getSendGridForShop(shop: Shop): typeof sgMail | null {
+    const apiKey = shop.sendgrid_api_key || process.env.SENDGRID_API_KEY;
+
+    if (!apiKey) {
+      console.warn(`No SendGrid API key for shop ${shop.id}`);
+      return null;
+    }
+
+    // Create new instance per shop
+    const client = require('@sendgrid/mail');
+    client.setApiKey(apiKey);
+    return client;
+  }
+  /**
    * Send order confirmation email
    */
-  static async sendOrderConfirmation(order: OrderWithItems): Promise<void> {
+  static async sendOrderConfirmation(order: OrderWithItems, shop: Shop): Promise<void> {
     const customerEmail = order.guest_email || order.user_email;
 
     if (!customerEmail) {
@@ -50,22 +45,27 @@ export class EmailService {
       return;
     }
 
+    const client = this.getSendGridForShop(shop);
+    if (!client) {
+      console.log(`📧 [MOCK] Order confirmation email would be sent to ${customerEmail} for shop ${shop.id}`);
+      await logEmailSent('order_confirmation', customerEmail, true, 'SendGrid not configured - mock send');
+      return;
+    }
+
+    const fromEmail = shop.email_from || process.env.FROM_EMAIL || 'noreply@example.com';
+    const fromName = shop.email_from_name || shop.display_name;
+
     try {
       const msg = {
         to: customerEmail,
-        from: { email: FROM_EMAIL, name: FROM_NAME },
-        subject: `Order Confirmation #${order.id}`,
+        from: { email: fromEmail, name: fromName },
+        subject: `Order Confirmation #${order.id} - ${shop.display_name}`,
         html: renderOrderConfirmationEmail(order),
       };
 
-      if (sendgridConfigured) {
-        await sgMail.send(msg);
-        await logEmailSent('order_confirmation', customerEmail, true);
-        console.log(`✅ Order confirmation email sent to ${customerEmail}`);
-      } else {
-        console.log(`📧 [MOCK] Order confirmation email would be sent to ${customerEmail}`);
-        await logEmailSent('order_confirmation', customerEmail, true, 'SendGrid not configured - mock send');
-      }
+      await client.send(msg);
+      await logEmailSent('order_confirmation', customerEmail, true);
+      console.log(`✅ Order confirmation email sent to ${customerEmail} via ${shop.id}'s SendGrid`);
     } catch (error) {
       console.error('Failed to send order confirmation email:', error);
       await logEmailSent('order_confirmation', customerEmail, false, error instanceof Error ? error.message : String(error));
@@ -76,7 +76,7 @@ export class EmailService {
   /**
    * Send order ready notification
    */
-  static async sendOrderReady(order: OrderWithItems): Promise<void> {
+  static async sendOrderReady(order: OrderWithItems, shop: Shop): Promise<void> {
     const customerEmail = order.guest_email || order.user_email;
 
     if (!customerEmail) {
@@ -84,22 +84,27 @@ export class EmailService {
       return;
     }
 
+    const client = this.getSendGridForShop(shop);
+    if (!client) {
+      console.log(`📧 [MOCK] Order ready email would be sent to ${customerEmail} for shop ${shop.id}`);
+      await logEmailSent('order_ready', customerEmail, true, 'SendGrid not configured - mock send');
+      return;
+    }
+
+    const fromEmail = shop.email_from || process.env.FROM_EMAIL || 'noreply@example.com';
+    const fromName = shop.email_from_name || shop.display_name;
+
     try {
       const msg = {
         to: customerEmail,
-        from: { email: FROM_EMAIL, name: FROM_NAME },
-        subject: 'Your order is ready for pickup!',
+        from: { email: fromEmail, name: fromName },
+        subject: `Your order is ready for pickup! - ${shop.display_name}`,
         html: renderOrderReadyEmail(order),
       };
 
-      if (sendgridConfigured) {
-        await sgMail.send(msg);
-        await logEmailSent('order_ready', customerEmail, true);
-        console.log(`✅ Order ready email sent to ${customerEmail}`);
-      } else {
-        console.log(`📧 [MOCK] Order ready email would be sent to ${customerEmail}`);
-        await logEmailSent('order_ready', customerEmail, true, 'SendGrid not configured - mock send');
-      }
+      await client.send(msg);
+      await logEmailSent('order_ready', customerEmail, true);
+      console.log(`✅ Order ready email sent to ${customerEmail} via ${shop.id}'s SendGrid`);
     } catch (error) {
       console.error('Failed to send order ready email:', error);
       await logEmailSent('order_ready', customerEmail, false, error instanceof Error ? error.message : String(error));
@@ -109,7 +114,7 @@ export class EmailService {
   /**
    * Send scheduled order reminder
    */
-  static async sendScheduledOrderReminder(order: OrderWithItems): Promise<void> {
+  static async sendScheduledOrderReminder(order: OrderWithItems, shop: Shop): Promise<void> {
     const customerEmail = order.guest_email || order.user_email;
 
     if (!customerEmail) {
@@ -122,22 +127,27 @@ export class EmailService {
       return;
     }
 
+    const client = this.getSendGridForShop(shop);
+    if (!client) {
+      console.log(`📧 [MOCK] Scheduled reminder email would be sent to ${customerEmail} for shop ${shop.id}`);
+      await logEmailSent('scheduled_reminder', customerEmail, true, 'SendGrid not configured - mock send');
+      return;
+    }
+
+    const fromEmail = shop.email_from || process.env.FROM_EMAIL || 'noreply@example.com';
+    const fromName = shop.email_from_name || shop.display_name;
+
     try {
       const msg = {
         to: customerEmail,
-        from: { email: FROM_EMAIL, name: FROM_NAME },
-        subject: 'Reminder: Your order is ready soon',
+        from: { email: fromEmail, name: fromName },
+        subject: `Reminder: Your order is ready soon - ${shop.display_name}`,
         html: renderScheduledReminderEmail(order, new Date(order.pickup_time)),
       };
 
-      if (sendgridConfigured) {
-        await sgMail.send(msg);
-        await logEmailSent('scheduled_reminder', customerEmail, true);
-        console.log(`✅ Scheduled reminder email sent to ${customerEmail}`);
-      } else {
-        console.log(`📧 [MOCK] Scheduled reminder email would be sent to ${customerEmail}`);
-        await logEmailSent('scheduled_reminder', customerEmail, true, 'SendGrid not configured - mock send');
-      }
+      await client.send(msg);
+      await logEmailSent('scheduled_reminder', customerEmail, true);
+      console.log(`✅ Scheduled reminder email sent to ${customerEmail} via ${shop.id}'s SendGrid`);
     } catch (error) {
       console.error('Failed to send scheduled reminder email:', error);
       await logEmailSent('scheduled_reminder', customerEmail, false, error instanceof Error ? error.message : String(error));
@@ -147,23 +157,28 @@ export class EmailService {
   /**
    * Send membership welcome email
    */
-  static async sendMembershipWelcome(user: User, plan: MembershipPlan): Promise<void> {
+  static async sendMembershipWelcome(user: User, plan: MembershipPlan, shop: Shop): Promise<void> {
+    const client = this.getSendGridForShop(shop);
+    if (!client) {
+      console.log(`📧 [MOCK] Membership welcome email would be sent to ${user.email} for shop ${shop.id}`);
+      await logEmailSent('membership_welcome', user.email, true, 'SendGrid not configured - mock send');
+      return;
+    }
+
+    const fromEmail = shop.email_from || process.env.FROM_EMAIL || 'noreply@example.com';
+    const fromName = shop.email_from_name || shop.display_name;
+
     try {
       const msg = {
         to: user.email,
-        from: { email: FROM_EMAIL, name: FROM_NAME },
-        subject: `Welcome to ${plan.name}!`,
+        from: { email: fromEmail, name: fromName },
+        subject: `Welcome to ${plan.name}! - ${shop.display_name}`,
         html: renderMembershipWelcomeEmail(user, plan),
       };
 
-      if (sendgridConfigured) {
-        await sgMail.send(msg);
-        await logEmailSent('membership_welcome', user.email, true);
-        console.log(`✅ Membership welcome email sent to ${user.email}`);
-      } else {
-        console.log(`📧 [MOCK] Membership welcome email would be sent to ${user.email}`);
-        await logEmailSent('membership_welcome', user.email, true, 'SendGrid not configured - mock send');
-      }
+      await client.send(msg);
+      await logEmailSent('membership_welcome', user.email, true);
+      console.log(`✅ Membership welcome email sent to ${user.email} via ${shop.id}'s SendGrid`);
     } catch (error) {
       console.error('Failed to send membership welcome email:', error);
       await logEmailSent('membership_welcome', user.email, false, error instanceof Error ? error.message : String(error));
@@ -173,23 +188,28 @@ export class EmailService {
   /**
    * Send membership renewal reminder
    */
-  static async sendMembershipRenewalReminder(user: User, membership: UserMembership): Promise<void> {
+  static async sendMembershipRenewalReminder(user: User, membership: UserMembership, shop: Shop): Promise<void> {
+    const client = this.getSendGridForShop(shop);
+    if (!client) {
+      console.log(`📧 [MOCK] Membership renewal email would be sent to ${user.email} for shop ${shop.id}`);
+      await logEmailSent('membership_renewal', user.email, true, 'SendGrid not configured - mock send');
+      return;
+    }
+
+    const fromEmail = shop.email_from || process.env.FROM_EMAIL || 'noreply@example.com';
+    const fromName = shop.email_from_name || shop.display_name;
+
     try {
       const msg = {
         to: user.email,
-        from: { email: FROM_EMAIL, name: FROM_NAME },
-        subject: 'Your membership renews soon',
+        from: { email: fromEmail, name: fromName },
+        subject: `Your membership renews soon - ${shop.display_name}`,
         html: renderMembershipRenewalEmail(user, membership),
       };
 
-      if (sendgridConfigured) {
-        await sgMail.send(msg);
-        await logEmailSent('membership_renewal', user.email, true);
-        console.log(`✅ Membership renewal email sent to ${user.email}`);
-      } else {
-        console.log(`📧 [MOCK] Membership renewal email would be sent to ${user.email}`);
-        await logEmailSent('membership_renewal', user.email, true, 'SendGrid not configured - mock send');
-      }
+      await client.send(msg);
+      await logEmailSent('membership_renewal', user.email, true);
+      console.log(`✅ Membership renewal email sent to ${user.email} via ${shop.id}'s SendGrid`);
     } catch (error) {
       console.error('Failed to send membership renewal email:', error);
       await logEmailSent('membership_renewal', user.email, false, error instanceof Error ? error.message : String(error));
@@ -199,26 +219,31 @@ export class EmailService {
   /**
    * Send password reset email
    */
-  static async sendPasswordReset(user: User, resetToken: string): Promise<void> {
+  static async sendPasswordReset(user: User, resetToken: string, shop: Shop): Promise<void> {
     const resetUrl = `${FRONTEND_URL}/reset-password?token=${resetToken}`;
+
+    const client = this.getSendGridForShop(shop);
+    if (!client) {
+      console.log(`📧 [MOCK] Password reset email would be sent to ${user.email} for shop ${shop.id}`);
+      console.log(`📧 Reset URL: ${resetUrl}`);
+      await logEmailSent('password_reset', user.email, true, 'SendGrid not configured - mock send');
+      return;
+    }
+
+    const fromEmail = shop.email_from || process.env.FROM_EMAIL || 'noreply@example.com';
+    const fromName = shop.email_from_name || shop.display_name;
 
     try {
       const msg = {
         to: user.email,
-        from: { email: FROM_EMAIL, name: FROM_NAME },
-        subject: 'Reset your password',
+        from: { email: fromEmail, name: fromName },
+        subject: `Reset your password - ${shop.display_name}`,
         html: renderPasswordResetEmail(user, resetUrl),
       };
 
-      if (sendgridConfigured) {
-        await sgMail.send(msg);
-        await logEmailSent('password_reset', user.email, true);
-        console.log(`✅ Password reset email sent to ${user.email}`);
-      } else {
-        console.log(`📧 [MOCK] Password reset email would be sent to ${user.email}`);
-        console.log(`📧 Reset URL: ${resetUrl}`);
-        await logEmailSent('password_reset', user.email, true, 'SendGrid not configured - mock send');
-      }
+      await client.send(msg);
+      await logEmailSent('password_reset', user.email, true);
+      console.log(`✅ Password reset email sent to ${user.email} via ${shop.id}'s SendGrid`);
     } catch (error) {
       console.error('Failed to send password reset email:', error);
       await logEmailSent('password_reset', user.email, false, error instanceof Error ? error.message : String(error));
@@ -228,23 +253,28 @@ export class EmailService {
   /**
    * Send loyalty points earned notification
    */
-  static async sendLoyaltyPointsEarned(user: User, points: number, orderId: number): Promise<void> {
+  static async sendLoyaltyPointsEarned(user: User, points: number, orderId: number, shop: Shop): Promise<void> {
+    const client = this.getSendGridForShop(shop);
+    if (!client) {
+      console.log(`📧 [MOCK] Loyalty points email would be sent to ${user.email} for shop ${shop.id}`);
+      await logEmailSent('loyalty_points', user.email, true, 'SendGrid not configured - mock send');
+      return;
+    }
+
+    const fromEmail = shop.email_from || process.env.FROM_EMAIL || 'noreply@example.com';
+    const fromName = shop.email_from_name || shop.display_name;
+
     try {
       const msg = {
         to: user.email,
-        from: { email: FROM_EMAIL, name: FROM_NAME },
-        subject: `You earned ${points} loyalty points!`,
+        from: { email: fromEmail, name: fromName },
+        subject: `You earned ${points} loyalty points! - ${shop.display_name}`,
         html: renderLoyaltyPointsEmail(user, points, orderId),
       };
 
-      if (sendgridConfigured) {
-        await sgMail.send(msg);
-        await logEmailSent('loyalty_points', user.email, true);
-        console.log(`✅ Loyalty points email sent to ${user.email}`);
-      } else {
-        console.log(`📧 [MOCK] Loyalty points email would be sent to ${user.email}`);
-        await logEmailSent('loyalty_points', user.email, true, 'SendGrid not configured - mock send');
-      }
+      await client.send(msg);
+      await logEmailSent('loyalty_points', user.email, true);
+      console.log(`✅ Loyalty points email sent to ${user.email} via ${shop.id}'s SendGrid`);
     } catch (error) {
       console.error('Failed to send loyalty points email:', error);
       await logEmailSent('loyalty_points', user.email, false, error instanceof Error ? error.message : String(error));
@@ -261,6 +291,7 @@ export class EmailService {
     scheduledTime: Date;
     items: any[];
     total: number;
+    shop: Shop;
   }): Promise<void> {
     // Create a minimal order object for the reminder
     const orderLike: OrderWithItems = {
@@ -273,6 +304,6 @@ export class EmailService {
       customer_name: params.name,
     } as OrderWithItems;
 
-    await this.sendScheduledOrderReminder(orderLike);
+    await this.sendScheduledOrderReminder(orderLike, params.shop);
   }
 }

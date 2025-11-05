@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { OrderModel } from '../models/Order';
 import { EmailService } from '../services/emailService';
+import { ShopModel } from '../models/Shop';
 
 /**
  * Order Reminder Job
@@ -34,6 +35,13 @@ export function startOrderReminderJob() {
             continue;
           }
 
+          // Fetch shop for this order
+          const shop = await ShopModel.findById(order.shop_id);
+          if (!shop) {
+            console.warn(`[Order Reminders] Shop not found for order #${order.id}, skipping`);
+            continue;
+          }
+
           // Send reminder email
           await EmailService.sendPickupReminder({
             email: customerEmail,
@@ -42,6 +50,7 @@ export function startOrderReminderJob() {
             scheduledTime: order.scheduled_time!,
             items: order.items,
             total: order.total,
+            shop: shop,
           });
 
           // Mark reminder as sent
@@ -74,6 +83,13 @@ export async function checkAndSendReminders() {
 
     if (!customerEmail) continue;
 
+    // Fetch shop for this order
+    const shop = await ShopModel.findById(order.shop_id);
+    if (!shop) {
+      console.warn(`Shop not found for order #${order.id}, skipping`);
+      continue;
+    }
+
     await EmailService.sendPickupReminder({
       email: customerEmail,
       name: order.customer_name,
@@ -81,6 +97,7 @@ export async function checkAndSendReminders() {
       scheduledTime: order.scheduled_time!,
       items: order.items,
       total: order.total,
+      shop: shop,
     });
 
     await OrderModel.markReminderSent(order.id);

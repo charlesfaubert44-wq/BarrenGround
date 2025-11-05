@@ -176,7 +176,7 @@ export async function createSubscription(req: Request, res: Response): Promise<v
     try {
       const user = await UserModel.findById(req.user.userId);
       if (user) {
-        await EmailService.sendMembershipWelcome(user, plan);
+        await EmailService.sendMembershipWelcome(user, plan, req.shop!);
       }
     } catch (error) {
       console.error('Failed to send membership welcome email:', error);

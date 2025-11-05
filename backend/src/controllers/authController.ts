@@ -242,7 +242,7 @@ export async function requestPasswordReset(req: Request, res: Response): Promise
 
     // Send reset email
     try {
-      await EmailService.sendPasswordReset(user, resetToken);
+      await EmailService.sendPasswordReset(user, resetToken, req.shop!);
     } catch (error) {
       console.error('Failed to send password reset email:', error);
       // Still return success message to avoid revealing if email exists

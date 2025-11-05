@@ -219,7 +219,7 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
 
     // Send order confirmation email
     try {
-      await EmailService.sendOrderConfirmation(order);
+      await EmailService.sendOrderConfirmation(order, req.shop!);
     } catch (error) {
       console.error('Failed to send order confirmation email:', error);
       // Don't fail the order if email can't be sent
@@ -355,7 +355,7 @@ export async function updateOrderStatus(req: Request, res: Response): Promise<vo
       try {
         const fullOrder = await OrderModel.getById(id);
         if (fullOrder) {
-          await EmailService.sendOrderReady(fullOrder);
+          await EmailService.sendOrderReady(fullOrder, req.shop!);
         }
       } catch (error) {
         console.error('Failed to send order ready email:', error);
