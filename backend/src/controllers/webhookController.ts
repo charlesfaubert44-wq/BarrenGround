@@ -101,12 +101,10 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, req: Re
   console.log('Payment succeeded:', paymentIntent.id);
 
   // Find order by payment_intent_id and update status to 'received'
-  // This is a simplified approach - in production you'd want a more robust system
-  const orders = await OrderModel.getByStatus(['pending']);
-  const order = orders.find((o) => o.payment_intent_id === paymentIntent.id);
+  const order = await OrderModel.findByPaymentIntentId(paymentIntent.id);
 
   if (order) {
-    await OrderModel.updateStatus(order.id, 'received');
+    await OrderModel.updateStatus(order.id, order.shop_id, 'received');
     console.log(`Order ${order.id} marked as received`);
   }
 }
@@ -115,11 +113,10 @@ async function handlePaymentFailure(paymentIntent: Stripe.PaymentIntent): Promis
   console.log('Payment failed:', paymentIntent.id);
 
   // Find order and mark as cancelled
-  const orders = await OrderModel.getByStatus(['pending']);
-  const order = orders.find((o) => o.payment_intent_id === paymentIntent.id);
+  const order = await OrderModel.findByPaymentIntentId(paymentIntent.id);
 
   if (order) {
-    await OrderModel.updateStatus(order.id, 'cancelled');
+    await OrderModel.updateStatus(order.id, order.shop_id, 'cancelled');
     console.log(`Order ${order.id} marked as cancelled due to payment failure`);
   }
 }
@@ -144,7 +141,7 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription): Prom
 
     // Reset coffees for new billing period if subscription is active
     if (subscription.status === 'active') {
-      const plan = await MembershipPlanModel.findById(membership.plan_id);
+      const plan = await MembershipPlanModel.findById(membership.plan_id, membership.shop_id);
       if (plan) {
         const sub = subscription as any;
         const periodStart = new Date((sub.current_period_start as number) * 1000);

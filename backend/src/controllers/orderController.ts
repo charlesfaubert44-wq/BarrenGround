@@ -99,7 +99,7 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
       const points = parseInt(redeemPoints);
 
       if (points >= 100 && points % 100 === 0) {
-        const result = await LoyaltyTransactionModel.redeemPoints(user_id, points);
+        const result = await LoyaltyTransactionModel.redeemPoints(user_id, points, req.shop!.id);
 
         if (result.success) {
           pointsRedeemed = points;
@@ -112,7 +112,7 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
 
     // Handle membership redemption
     if (useMembership && user_id) {
-      const membership = await UserMembershipModel.findActiveByUserId(user_id);
+      const membership = await UserMembershipModel.findActiveByUserId(user_id, req.shop!.id);
 
       if (membership && membership.coffees_remaining > 0) {
         // Check if user already redeemed today

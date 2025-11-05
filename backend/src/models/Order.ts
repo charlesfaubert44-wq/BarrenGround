@@ -414,6 +414,32 @@ export class OrderModel {
   }
 
   /**
+   * Find order by payment intent ID (for webhooks)
+   */
+  static async findByPaymentIntentId(paymentIntentId: string): Promise<OrderWithItems | null> {
+    const orderResult = await pool.query(
+      'SELECT * FROM orders WHERE payment_intent_id = $1',
+      [paymentIntentId]
+    );
+
+    if (orderResult.rows.length === 0) {
+      return null;
+    }
+
+    const order = orderResult.rows[0];
+    const itemsResult = await pool.query(
+      'SELECT * FROM order_items WHERE order_id = $1',
+      [order.id]
+    );
+
+    return {
+      ...order,
+      items: itemsResult.rows,
+      customer_name: order.guest_name || 'Registered User',
+    };
+  }
+
+  /**
    * Mark reminder as sent
    */
   static async markReminderSent(orderId: number): Promise<void> {

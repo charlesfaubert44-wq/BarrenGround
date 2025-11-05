@@ -17,7 +17,7 @@ export function startBirthdayBonusJob() {
 
       // Find users whose birthday is today and haven't received bonus this year
       const result = await pool.query(
-        `SELECT id, email, name
+        `SELECT id, email, name, shop_id
          FROM users
          WHERE date_of_birth IS NOT NULL
            AND EXTRACT(MONTH FROM date_of_birth) = EXTRACT(MONTH FROM CURRENT_DATE)
@@ -40,7 +40,8 @@ export function startBirthdayBonusJob() {
             user.id,
             50,
             'birthday',
-            `Birthday bonus ${currentYear}`
+            `Birthday bonus ${currentYear}`,
+            user.shop_id
           );
 
           // Update last birthday bonus year

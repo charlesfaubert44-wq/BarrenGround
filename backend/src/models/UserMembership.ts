@@ -60,11 +60,20 @@ export class UserMembershipModel {
     return result.rows[0] || null;
   }
 
-  static async findByStripeSubscriptionId(subscriptionId: string, shopId: string): Promise<UserMembership | null> {
-    const result = await pool.query(
-      'SELECT * FROM user_memberships WHERE stripe_subscription_id = $1 AND shop_id = $2',
-      [subscriptionId, shopId]
-    );
+  static async findByStripeSubscriptionId(subscriptionId: string, shopId?: string): Promise<UserMembership | null> {
+    let result;
+    if (shopId) {
+      result = await pool.query(
+        'SELECT * FROM user_memberships WHERE stripe_subscription_id = $1 AND shop_id = $2',
+        [subscriptionId, shopId]
+      );
+    } else {
+      // For webhooks - subscription IDs are globally unique
+      result = await pool.query(
+        'SELECT * FROM user_memberships WHERE stripe_subscription_id = $1',
+        [subscriptionId]
+      );
+    }
     return result.rows[0] || null;
   }
 
@@ -76,11 +85,20 @@ export class UserMembershipModel {
     return result.rows[0] || null;
   }
 
-  static async updateStatus(id: number, status: UserMembership['status'], shopId: string): Promise<boolean> {
-    const result = await pool.query(
-      'UPDATE user_memberships SET status = $1, updated_at = NOW() WHERE id = $2 AND shop_id = $3',
-      [status, id, shopId]
-    );
+  static async updateStatus(id: number, status: UserMembership['status'], shopId?: string): Promise<boolean> {
+    let result;
+    if (shopId) {
+      result = await pool.query(
+        'UPDATE user_memberships SET status = $1, updated_at = NOW() WHERE id = $2 AND shop_id = $3',
+        [status, id, shopId]
+      );
+    } else {
+      // For webhooks - no shop_id check needed
+      result = await pool.query(
+        'UPDATE user_memberships SET status = $1, updated_at = NOW() WHERE id = $2',
+        [status, id]
+      );
+    }
     return result.rowCount ? result.rowCount > 0 : false;
   }
 
@@ -94,16 +112,30 @@ export class UserMembershipModel {
     return result.rowCount ? result.rowCount > 0 : false;
   }
 
-  static async resetCoffees(id: number, count: number, newPeriodStart: Date, newPeriodEnd: Date, shopId: string): Promise<boolean> {
-    const result = await pool.query(
-      `UPDATE user_memberships
-       SET coffees_remaining = $1,
-           current_period_start = $2,
-           current_period_end = $3,
-           updated_at = NOW()
-       WHERE id = $4 AND shop_id = $5`,
-      [count, newPeriodStart, newPeriodEnd, id, shopId]
-    );
+  static async resetCoffees(id: number, count: number, newPeriodStart: Date, newPeriodEnd: Date, shopId?: string): Promise<boolean> {
+    let result;
+    if (shopId) {
+      result = await pool.query(
+        `UPDATE user_memberships
+         SET coffees_remaining = $1,
+             current_period_start = $2,
+             current_period_end = $3,
+             updated_at = NOW()
+         WHERE id = $4 AND shop_id = $5`,
+        [count, newPeriodStart, newPeriodEnd, id, shopId]
+      );
+    } else {
+      // For webhooks - no shop_id check needed
+      result = await pool.query(
+        `UPDATE user_memberships
+         SET coffees_remaining = $1,
+             current_period_start = $2,
+             current_period_end = $3,
+             updated_at = NOW()
+         WHERE id = $4`,
+        [count, newPeriodStart, newPeriodEnd, id]
+      );
+    }
     return result.rowCount ? result.rowCount > 0 : false;
   }
 
