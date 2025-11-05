@@ -28,7 +28,7 @@ describe('MembershipCard Component', () => {
       description: 'Get one coffee per day',
       price: 25.00,
       interval: 'week' as const,
-      coffees_per_period: 7,
+      coffees_per_interval: 7,
       active: true,
       created_at: new Date().toISOString(),
     },
@@ -52,7 +52,7 @@ describe('MembershipCard Component', () => {
     });
 
     it('should show promotional card when membership is inactive', () => {
-      const inactiveMembership = { ...mockActiveMembership, status: 'cancelled' as const };
+      const inactiveMembership = { ...mockActiveMembership, status: 'canceled' as const };
       renderWithRouter(<MembershipCard membership={inactiveMembership} />);
 
       expect(screen.getByText(/Get a Coffee Membership/i)).toBeInTheDocument();

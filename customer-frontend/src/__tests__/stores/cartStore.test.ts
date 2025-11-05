@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 import { useCartStore } from '../../store/cartStore';
 
 // Mock fetch for backend sync
-global.fetch = vi.fn();
+globalThis.fetch = vi.fn() as any;
 
 describe('Cart Store', () => {
   beforeEach(() => {
