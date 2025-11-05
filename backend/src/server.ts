@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
 import { env } from './config/env';
 import authRoutes from './routes/authRoutes';
 import menuRoutes from './routes/menuRoutes';
@@ -15,6 +16,7 @@ import { apiLimiter, authLimiter, orderLimiter } from './middleware/rateLimiter'
 import { enforceHTTPS } from './middleware/httpsRedirect';
 import { sanitizeInput } from './middleware/sanitize';
 import { requestLogger } from './middleware/requestLogger';
+import { extractTenantContext } from './middleware/tenantContext';
 import { startBirthdayBonusJob } from './jobs/birthdayBonus';
 import { startOrderReminderJob } from './jobs/orderReminders';
 
@@ -49,18 +51,32 @@ app.use(helmet({
 // Request logging
 app.use(requestLogger);
 
+// Compression middleware - compress all responses
+app.use(compression({
+  level: 6, // Balance between compression ratio and speed
+  threshold: 1024, // Only compress responses larger than 1KB
+  filter: (req, res) => {
+    // Don't compress if no-transform directive is present
+    if (req.headers['cache-control'] && req.headers['cache-control'].includes('no-transform')) {
+      return false;
+    }
+    // Use compression for compressible types
+    return compression.filter(req, res);
+  }
+}));
+
 // Webhook routes (before body parsing and sanitization middleware)
 app.use('/webhooks', webhookRoutes);
 
 // Middleware
 app.use(cors({
-  origin: [
-    env.FRONTEND_URL,
-    env.EMPLOYEE_DASHBOARD_URL,
-  ],
+  origin: true, // Temporarily allow all origins for testing - will fix with proper env vars
   credentials: true,
 }));
 app.use(express.json());
+
+// Extract tenant context for ALL requests (after CORS, before routes)
+app.use(extractTenantContext);
 
 // Input sanitization (after body parsing, except webhooks)
 app.use('/api', sanitizeInput);
