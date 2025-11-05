@@ -19,6 +19,8 @@ import { requestLogger } from './middleware/requestLogger';
 import { extractTenantContext } from './middleware/tenantContext';
 import { startBirthdayBonusJob } from './jobs/birthdayBonus';
 import { startOrderReminderJob } from './jobs/orderReminders';
+import { createOnboardingLink } from './controllers/stripeConnectController';
+import { authenticateToken } from './middleware/auth';
 
 const app = express();
 
@@ -100,6 +102,7 @@ app.use('/api/promos', promoRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/scheduling', schedulingRoutes);
 app.use('/api/loyalty', loyaltyRoutes);
+app.post('/api/stripe-connect/onboarding', authenticateToken, createOnboardingLink);
 
 // Start scheduled jobs in non-production environments
 if (env.NODE_ENV !== 'production') {

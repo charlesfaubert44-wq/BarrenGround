@@ -8,6 +8,7 @@ import { body, validationResult } from 'express-validator';
 import Stripe from 'stripe';
 import { OrderItem } from '../types/api';
 import { EmailService } from '../services/emailService';
+import { createPaymentIntent } from '../services/stripeConnect';
 
 // Initialize Stripe only if API key is provided and valid
 let stripe: Stripe | null = null;
@@ -138,27 +139,25 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
       }
     }
 
-    // Create Stripe PaymentIntent only if there's a charge
+    // Create Stripe PaymentIntent using shop-specific account
     let paymentIntent: Stripe.PaymentIntent | null = null;
     if (total > 0) {
-      if (stripe) {
-        // Real Stripe payment
-        paymentIntent = await stripe.paymentIntents.create({
-          amount: Math.round(total * 100), // Convert to cents
-          currency: 'usd',
-          metadata: {
-            user_id: user_id?.toString() || 'guest',
-            guest_email: guest_email || '',
-            membership_used: membershipUsed.toString(),
-          },
+      if (req.shop) {
+        paymentIntent = await createPaymentIntent(req.shop, total, {
+          user_id: user_id?.toString() || 'guest',
+          guest_email: guest_email || '',
+          shop_id: req.shop.id,
+          membership_used: membershipUsed.toString(),
         });
-      } else {
-        // Mock payment when Stripe is not configured
+      }
+
+      if (!paymentIntent) {
+        // Fallback to mock if Stripe not configured
         paymentIntent = {
           id: `mock_pi_${Date.now()}`,
           client_secret: `mock_secret_${Date.now()}`,
         } as Stripe.PaymentIntent;
-        console.log('⚠️  Using mock payment (Stripe not configured)');
+        console.log('⚠️  Using mock payment (Stripe not configured for shop)');
       }
     }
 
