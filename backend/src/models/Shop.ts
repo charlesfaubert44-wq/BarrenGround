@@ -34,6 +34,18 @@ export interface Shop {
   updated_at: Date;
 }
 
+// Whitelist of allowed update fields to prevent SQL injection
+const ALLOWED_UPDATE_FIELDS = new Set([
+  'name', 'display_name', 'email', 'phone', 'address', 'city',
+  'province', 'postal_code', 'country', 'domain', 'subdomain',
+  'stripe_account_id', 'stripe_publishable_key', 'sendgrid_api_key',
+  'email_from', 'email_from_name', 'logo_url', 'primary_color',
+  'secondary_color', 'config', 'features', 'status'
+]);
+
+// Email validation regex
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export class ShopModel {
   static async findById(id: string): Promise<Shop | null> {
     const result = await pool.query(
@@ -67,25 +79,73 @@ export class ShopModel {
   }
 
   static async create(shopData: Partial<Shop>): Promise<Shop> {
+    // Validate required fields
+    if (!shopData.id) {
+      throw new Error('Shop id is required');
+    }
+    if (!shopData.name) {
+      throw new Error('Shop name is required');
+    }
+    if (!shopData.display_name) {
+      throw new Error('Shop display_name is required');
+    }
+    if (!shopData.email) {
+      throw new Error('Shop email is required');
+    }
+
+    // Validate email format
+    if (!EMAIL_REGEX.test(shopData.email)) {
+      throw new Error('Invalid email format');
+    }
+
+    // Set default values for features and config if not provided
+    const features = shopData.features || {
+      membership: false,
+      loyalty: false,
+      scheduling: false,
+      delivery: false,
+      catering: false,
+    };
+
+    const config = shopData.config || {};
+    const status = shopData.status || 'active';
+
     const result = await pool.query(
       `INSERT INTO shops (
-        id, name, display_name, email, phone,
-        subdomain, domain, email_from, email_from_name,
-        config, features
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        id, name, display_name, email, phone, address, city,
+        province, postal_code, country, subdomain, domain,
+        stripe_account_id, stripe_publishable_key, sendgrid_api_key,
+        email_from, email_from_name, logo_url, primary_color,
+        secondary_color, config, features, status
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+        $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23
+      )
       RETURNING *`,
       [
         shopData.id,
         shopData.name,
         shopData.display_name,
         shopData.email,
-        shopData.phone,
-        shopData.subdomain,
-        shopData.domain,
-        shopData.email_from,
-        shopData.email_from_name,
-        JSON.stringify(shopData.config || {}),
-        JSON.stringify(shopData.features || {}),
+        shopData.phone || null,
+        shopData.address || null,
+        shopData.city || null,
+        shopData.province || null,
+        shopData.postal_code || null,
+        shopData.country || null,
+        shopData.subdomain || null,
+        shopData.domain || null,
+        shopData.stripe_account_id || null,
+        shopData.stripe_publishable_key || null,
+        shopData.sendgrid_api_key || null,
+        shopData.email_from || null,
+        shopData.email_from_name || null,
+        shopData.logo_url || null,
+        shopData.primary_color || null,
+        shopData.secondary_color || null,
+        JSON.stringify(config),
+        JSON.stringify(features),
+        status,
       ]
     );
     return result.rows[0];
@@ -96,11 +156,15 @@ export class ShopModel {
     const values: any[] = [];
     let paramCount = 1;
 
-    // Build dynamic update query
+    // Build dynamic update query with whitelist validation
     Object.entries(updates).forEach(([key, value]) => {
-      if (key !== 'id' && value !== undefined) {
+      // Validate field name against whitelist to prevent SQL injection
+      if (key !== 'id' && value !== undefined && ALLOWED_UPDATE_FIELDS.has(key)) {
         fields.push(`${key} = $${paramCount++}`);
         values.push(typeof value === 'object' ? JSON.stringify(value) : value);
+      } else if (key !== 'id' && !ALLOWED_UPDATE_FIELDS.has(key)) {
+        // Log or throw error for invalid field names
+        throw new Error(`Invalid update field: ${key}`);
       }
     });
 
