@@ -9,36 +9,35 @@ export interface LoyaltyTransaction {
   balance_after: number;
   transaction_type: 'earn' | 'redeem' | 'bonus' | 'adjustment';
   description: string;
+  shop_id: string;
   created_at: Date;
 }
 
 export class LoyaltyTransactionModel {
   /**
-   * Get user's current loyalty points balance
+   * Get user's current loyalty points balance for a specific shop
    */
-  static async getUserBalance(userId: number): Promise<number> {
+  static async getUserBalance(userId: number, shopId: string): Promise<number> {
     const result = await pool.query(
-      'SELECT loyalty_points FROM users WHERE id = $1',
-      [userId]
+      `SELECT COALESCE(SUM(points_earned - points_spent), 0) as balance
+       FROM loyalty_transactions
+       WHERE user_id = $1 AND shop_id = $2`,
+      [userId, shopId]
     );
 
-    if (result.rows.length === 0) {
-      throw new Error('User not found');
-    }
-
-    return result.rows[0].loyalty_points || 0;
+    return parseInt(result.rows[0].balance);
   }
 
   /**
-   * Get user's transaction history
+   * Get user's transaction history for a specific shop
    */
-  static async getUserHistory(userId: number, limit: number = 50): Promise<LoyaltyTransaction[]> {
+  static async getUserHistory(userId: number, shopId: string, limit: number = 50): Promise<LoyaltyTransaction[]> {
     const result = await pool.query(
       `SELECT * FROM loyalty_transactions
-       WHERE user_id = $1
+       WHERE user_id = $1 AND shop_id = $2
        ORDER BY created_at DESC
-       LIMIT $2`,
-      [userId, limit]
+       LIMIT $3`,
+      [userId, shopId, limit]
     );
 
     return result.rows;
@@ -52,7 +51,8 @@ export class LoyaltyTransactionModel {
     userId: number,
     orderId: number,
     amount: number,
-    description: string
+    description: string,
+    shopId: string
   ): Promise<LoyaltyTransaction> {
     const client = await pool.connect();
 
@@ -62,32 +62,24 @@ export class LoyaltyTransactionModel {
       // Calculate points (1 point per dollar)
       const pointsToEarn = Math.floor(amount);
 
-      // Get current balance
+      // Get current balance for this shop
       const balanceResult = await client.query(
-        'SELECT loyalty_points FROM users WHERE id = $1',
-        [userId]
+        `SELECT COALESCE(SUM(points_earned - points_spent), 0) as balance
+         FROM loyalty_transactions
+         WHERE user_id = $1 AND shop_id = $2`,
+        [userId, shopId]
       );
 
-      if (balanceResult.rows.length === 0) {
-        throw new Error('User not found');
-      }
-
-      const currentBalance = balanceResult.rows[0].loyalty_points || 0;
+      const currentBalance = parseInt(balanceResult.rows[0].balance);
       const newBalance = currentBalance + pointsToEarn;
-
-      // Update user balance
-      await client.query(
-        'UPDATE users SET loyalty_points = $1 WHERE id = $2',
-        [newBalance, userId]
-      );
 
       // Create transaction record
       const transactionResult = await client.query(
         `INSERT INTO loyalty_transactions
-         (user_id, order_id, points_earned, points_spent, balance_after, transaction_type, description)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         (user_id, order_id, points_earned, points_spent, balance_after, transaction_type, description, shop_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING *`,
-        [userId, orderId, pointsToEarn, 0, newBalance, 'earn', description]
+        [userId, orderId, pointsToEarn, 0, newBalance, 'earn', description, shopId]
       );
 
       await client.query('COMMIT');
@@ -109,6 +101,7 @@ export class LoyaltyTransactionModel {
   static async redeemPoints(
     userId: number,
     points: number,
+    shopId: string,
     orderId?: number
   ): Promise<{ success: boolean; creditAmount: number; transaction?: LoyaltyTransaction }> {
     const client = await pool.connect();
@@ -124,17 +117,15 @@ export class LoyaltyTransactionModel {
       // Ensure points are in multiples of 100
       const validPoints = Math.floor(points / 100) * 100;
 
-      // Get current balance
+      // Get current balance for this shop
       const balanceResult = await client.query(
-        'SELECT loyalty_points FROM users WHERE id = $1',
-        [userId]
+        `SELECT COALESCE(SUM(points_earned - points_spent), 0) as balance
+         FROM loyalty_transactions
+         WHERE user_id = $1 AND shop_id = $2`,
+        [userId, shopId]
       );
 
-      if (balanceResult.rows.length === 0) {
-        throw new Error('User not found');
-      }
-
-      const currentBalance = balanceResult.rows[0].loyalty_points || 0;
+      const currentBalance = parseInt(balanceResult.rows[0].balance);
 
       // Check sufficient balance
       if (currentBalance < validPoints) {
@@ -146,17 +137,11 @@ export class LoyaltyTransactionModel {
       const creditAmount = (validPoints / 100) * 5;
       const newBalance = currentBalance - validPoints;
 
-      // Update user balance
-      await client.query(
-        'UPDATE users SET loyalty_points = $1 WHERE id = $2',
-        [newBalance, userId]
-      );
-
       // Create transaction record
       const transactionResult = await client.query(
         `INSERT INTO loyalty_transactions
-         (user_id, order_id, points_earned, points_spent, balance_after, transaction_type, description)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         (user_id, order_id, points_earned, points_spent, balance_after, transaction_type, description, shop_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING *`,
         [
           userId,
@@ -165,7 +150,8 @@ export class LoyaltyTransactionModel {
           validPoints,
           newBalance,
           'redeem',
-          `Redeemed ${validPoints} points for $${creditAmount.toFixed(2)} credit`
+          `Redeemed ${validPoints} points for $${creditAmount.toFixed(2)} credit`,
+          shopId
         ]
       );
 
@@ -191,39 +177,32 @@ export class LoyaltyTransactionModel {
     userId: number,
     points: number,
     type: 'birthday' | 'referral' | 'promotion',
-    description: string
+    description: string,
+    shopId: string
   ): Promise<LoyaltyTransaction> {
     const client = await pool.connect();
 
     try {
       await client.query('BEGIN');
 
-      // Get current balance
+      // Get current balance for this shop
       const balanceResult = await client.query(
-        'SELECT loyalty_points FROM users WHERE id = $1',
-        [userId]
+        `SELECT COALESCE(SUM(points_earned - points_spent), 0) as balance
+         FROM loyalty_transactions
+         WHERE user_id = $1 AND shop_id = $2`,
+        [userId, shopId]
       );
 
-      if (balanceResult.rows.length === 0) {
-        throw new Error('User not found');
-      }
-
-      const currentBalance = balanceResult.rows[0].loyalty_points || 0;
+      const currentBalance = parseInt(balanceResult.rows[0].balance);
       const newBalance = currentBalance + points;
-
-      // Update user balance
-      await client.query(
-        'UPDATE users SET loyalty_points = $1 WHERE id = $2',
-        [newBalance, userId]
-      );
 
       // Create transaction record
       const transactionResult = await client.query(
         `INSERT INTO loyalty_transactions
-         (user_id, points_earned, points_spent, balance_after, transaction_type, description)
-         VALUES ($1, $2, $3, $4, $5, $6)
+         (user_id, points_earned, points_spent, balance_after, transaction_type, description, shop_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING *`,
-        [userId, points, 0, newBalance, 'bonus', description]
+        [userId, points, 0, newBalance, 'bonus', description, shopId]
       );
 
       await client.query('COMMIT');

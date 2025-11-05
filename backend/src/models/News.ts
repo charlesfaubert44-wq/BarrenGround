@@ -7,49 +7,53 @@ export interface News {
   image_url?: string;
   active: boolean;
   priority: number;
+  shop_id: string;
   created_at: Date;
   updated_at: Date;
 }
 
 export class NewsModel {
-  static async findAll(): Promise<News[]> {
+  static async findAll(shopId: string): Promise<News[]> {
     const result = await pool.query(
-      'SELECT * FROM news ORDER BY priority DESC, created_at DESC'
+      'SELECT * FROM news WHERE shop_id = $1 ORDER BY priority DESC, created_at DESC',
+      [shopId]
     );
     return result.rows;
   }
 
-  static async findById(id: number): Promise<News | null> {
+  static async findById(id: number, shopId: string): Promise<News | null> {
     const result = await pool.query(
-      'SELECT * FROM news WHERE id = $1',
-      [id]
+      'SELECT * FROM news WHERE id = $1 AND shop_id = $2',
+      [id, shopId]
     );
     return result.rows[0] || null;
   }
 
-  static async findActive(): Promise<News[]> {
+  static async findActive(shopId: string): Promise<News[]> {
     const result = await pool.query(
-      'SELECT * FROM news WHERE active = true ORDER BY priority DESC, created_at DESC'
+      'SELECT * FROM news WHERE shop_id = $1 AND active = true ORDER BY priority DESC, created_at DESC',
+      [shopId]
     );
     return result.rows;
   }
 
   static async create(data: Omit<News, 'id' | 'created_at' | 'updated_at'>): Promise<News> {
     const result = await pool.query(
-      `INSERT INTO news (title, content, image_url, active, priority)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      `INSERT INTO news (title, content, image_url, active, priority, shop_id)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
       [
         data.title,
         data.content,
         data.image_url || null,
         data.active,
-        data.priority || 0
+        data.priority || 0,
+        data.shop_id
       ]
     );
     return result.rows[0];
   }
 
-  static async update(id: number, data: Partial<Omit<News, 'id' | 'created_at' | 'updated_at'>>): Promise<News | null> {
+  static async update(id: number, data: Partial<Omit<News, 'id' | 'created_at' | 'updated_at'>>, shopId: string): Promise<News | null> {
     const fields: string[] = [];
     const values: (string | boolean | number | null)[] = [];
     let paramCount = 1;
@@ -79,26 +83,27 @@ export class NewsModel {
 
     fields.push(`updated_at = NOW()`);
     values.push(id);
+    values.push(shopId);
 
     const result = await pool.query(
-      `UPDATE news SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`,
+      `UPDATE news SET ${fields.join(', ')} WHERE id = $${paramCount} AND shop_id = $${paramCount + 1} RETURNING *`,
       values
     );
     return result.rows[0] || null;
   }
 
-  static async updateActive(id: number, active: boolean): Promise<News | null> {
+  static async updateActive(id: number, active: boolean, shopId: string): Promise<News | null> {
     const result = await pool.query(
-      'UPDATE news SET active = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
-      [active, id]
+      'UPDATE news SET active = $1, updated_at = NOW() WHERE id = $2 AND shop_id = $3 RETURNING *',
+      [active, id, shopId]
     );
     return result.rows[0] || null;
   }
 
-  static async delete(id: number): Promise<boolean> {
+  static async delete(id: number, shopId: string): Promise<boolean> {
     const result = await pool.query(
-      'DELETE FROM news WHERE id = $1',
-      [id]
+      'DELETE FROM news WHERE id = $1 AND shop_id = $2',
+      [id, shopId]
     );
     return result.rowCount ? result.rowCount > 0 : false;
   }

@@ -8,6 +8,7 @@ export interface BusinessHours {
   is_closed: boolean;
   max_orders_per_slot: number;
   slot_duration_minutes: number;
+  shop_id: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -22,11 +23,12 @@ export interface TimeSlot {
 
 export class BusinessHoursModel {
   /**
-   * Get all business hours configuration
+   * Get all business hours configuration for a specific shop
    */
-  static async getAll(): Promise<BusinessHours[]> {
+  static async getAll(shopId: string): Promise<BusinessHours[]> {
     const result = await pool.query(
-      'SELECT * FROM business_hours ORDER BY day_of_week'
+      'SELECT * FROM business_hours WHERE shop_id = $1 ORDER BY day_of_week',
+      [shopId]
     );
     return result.rows;
   }
@@ -35,10 +37,10 @@ export class BusinessHoursModel {
    * Get business hours for a specific day
    * @param dayOfWeek - 0=Sunday, 1=Monday, etc.
    */
-  static async getByDay(dayOfWeek: number): Promise<BusinessHours | null> {
+  static async getByDay(dayOfWeek: number, shopId: string): Promise<BusinessHours | null> {
     const result = await pool.query(
-      'SELECT * FROM business_hours WHERE day_of_week = $1',
-      [dayOfWeek]
+      'SELECT * FROM business_hours WHERE day_of_week = $1 AND shop_id = $2',
+      [dayOfWeek, shopId]
     );
     return result.rows[0] || null;
   }
@@ -48,7 +50,8 @@ export class BusinessHoursModel {
    */
   static async update(
     dayOfWeek: number,
-    data: Partial<BusinessHours>
+    data: Partial<BusinessHours>,
+    shopId: string
   ): Promise<BusinessHours | null> {
     const allowedFields = ['open_time', 'close_time', 'is_closed', 'max_orders_per_slot', 'slot_duration_minutes'];
     const updates: string[] = [];
@@ -69,9 +72,10 @@ export class BusinessHoursModel {
 
     updates.push(`updated_at = NOW()`);
     values.push(dayOfWeek);
+    values.push(shopId);
 
     const result = await pool.query(
-      `UPDATE business_hours SET ${updates.join(', ')} WHERE day_of_week = $${paramCount} RETURNING *`,
+      `UPDATE business_hours SET ${updates.join(', ')} WHERE day_of_week = $${paramCount} AND shop_id = $${paramCount + 1} RETURNING *`,
       values
     );
 
@@ -81,9 +85,9 @@ export class BusinessHoursModel {
   /**
    * Check if business is open at a given date/time
    */
-  static async isOpen(dateTime: Date): Promise<boolean> {
+  static async isOpen(dateTime: Date, shopId: string): Promise<boolean> {
     const dayOfWeek = dateTime.getDay();
-    const hours = await this.getByDay(dayOfWeek);
+    const hours = await this.getByDay(dayOfWeek, shopId);
 
     if (!hours || hours.is_closed) {
       return false;
@@ -100,9 +104,9 @@ export class BusinessHoursModel {
    * Generate available time slots for a given date
    * @param date - The date to generate slots for
    */
-  static async getAvailableSlots(date: Date): Promise<TimeSlot[]> {
+  static async getAvailableSlots(date: Date, shopId: string): Promise<TimeSlot[]> {
     const dayOfWeek = date.getDay();
-    const hours = await this.getByDay(dayOfWeek);
+    const hours = await this.getByDay(dayOfWeek, shopId);
 
     if (!hours || hours.is_closed) {
       return [];
@@ -131,7 +135,7 @@ export class BusinessHoursModel {
       // Only include slots that meet minimum advance notice
       if (slotTime >= minAdvanceTime) {
         // Get current order count for this slot
-        const capacity = await this.getSlotCapacity(slotTime, hours.slot_duration_minutes, hours.max_orders_per_slot);
+        const capacity = await this.getSlotCapacity(slotTime, hours.slot_duration_minutes, hours.max_orders_per_slot, shopId);
 
         slots.push({
           time: slotTime.toLocaleTimeString('en-US', {
@@ -159,7 +163,8 @@ export class BusinessHoursModel {
   static async getSlotCapacity(
     dateTime: Date,
     slotDuration: number = 15,
-    maxOrders: number = 20
+    maxOrders: number = 20,
+    shopId: string
   ): Promise<{
     current: number;
     max: number;
@@ -169,15 +174,16 @@ export class BusinessHoursModel {
     const slotStart = new Date(dateTime);
     const slotEnd = new Date(dateTime.getTime() + slotDuration * 60 * 1000);
 
-    // Count orders scheduled within this slot
+    // Count orders scheduled within this slot for this shop
     const result = await pool.query(
       `SELECT COUNT(*) as count
        FROM orders
-       WHERE is_scheduled = true
-         AND scheduled_time >= $1
-         AND scheduled_time < $2
+       WHERE shop_id = $1
+         AND is_scheduled = true
+         AND scheduled_time >= $2
+         AND scheduled_time < $3
          AND status != 'cancelled'`,
-      [slotStart, slotEnd]
+      [shopId, slotStart, slotEnd]
     );
 
     const current = parseInt(result.rows[0]?.count || '0');
@@ -192,18 +198,18 @@ export class BusinessHoursModel {
   /**
    * Get slot capacity using business hours settings
    */
-  static async getSlotCapacityWithSettings(dateTime: Date): Promise<{
+  static async getSlotCapacityWithSettings(dateTime: Date, shopId: string): Promise<{
     current: number;
     max: number;
     available: boolean;
   }> {
     const dayOfWeek = dateTime.getDay();
-    const hours = await this.getByDay(dayOfWeek);
+    const hours = await this.getByDay(dayOfWeek, shopId);
 
     if (!hours || hours.is_closed) {
       return { current: 0, max: 0, available: false };
     }
 
-    return this.getSlotCapacity(dateTime, hours.slot_duration_minutes, hours.max_orders_per_slot);
+    return this.getSlotCapacity(dateTime, hours.slot_duration_minutes, hours.max_orders_per_slot, shopId);
   }
 }

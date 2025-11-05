@@ -9,41 +9,45 @@ export interface Promo {
   active: boolean;
   start_date?: Date;
   end_date?: Date;
+  shop_id: string;
   created_at: Date;
   updated_at: Date;
 }
 
 export class PromoModel {
-  static async findAll(): Promise<Promo[]> {
+  static async findAll(shopId: string): Promise<Promo[]> {
     const result = await pool.query(
-      'SELECT * FROM promos ORDER BY created_at DESC'
+      'SELECT * FROM promos WHERE shop_id = $1 ORDER BY created_at DESC',
+      [shopId]
     );
     return result.rows;
   }
 
-  static async findById(id: number): Promise<Promo | null> {
+  static async findById(id: number, shopId: string): Promise<Promo | null> {
     const result = await pool.query(
-      'SELECT * FROM promos WHERE id = $1',
-      [id]
+      'SELECT * FROM promos WHERE id = $1 AND shop_id = $2',
+      [id, shopId]
     );
     return result.rows[0] || null;
   }
 
-  static async findActive(): Promise<Promo[]> {
+  static async findActive(shopId: string): Promise<Promo[]> {
     const result = await pool.query(
       `SELECT * FROM promos
-       WHERE active = true
+       WHERE shop_id = $1
+       AND active = true
        AND (start_date IS NULL OR start_date <= NOW())
        AND (end_date IS NULL OR end_date >= NOW())
-       ORDER BY created_at DESC`
+       ORDER BY created_at DESC`,
+      [shopId]
     );
     return result.rows;
   }
 
   static async create(data: Omit<Promo, 'id' | 'created_at' | 'updated_at'>): Promise<Promo> {
     const result = await pool.query(
-      `INSERT INTO promos (title, description, image_url, link_url, active, start_date, end_date)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      `INSERT INTO promos (title, description, image_url, link_url, active, start_date, end_date, shop_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
       [
         data.title,
         data.description,
@@ -51,13 +55,14 @@ export class PromoModel {
         data.link_url || null,
         data.active,
         data.start_date || null,
-        data.end_date || null
+        data.end_date || null,
+        data.shop_id
       ]
     );
     return result.rows[0];
   }
 
-  static async update(id: number, data: Partial<Omit<Promo, 'id' | 'created_at' | 'updated_at'>>): Promise<Promo | null> {
+  static async update(id: number, data: Partial<Omit<Promo, 'id' | 'created_at' | 'updated_at'>>, shopId: string): Promise<Promo | null> {
     const fields: string[] = [];
     const values: (string | boolean | number | Date | null)[] = [];
     let paramCount = 1;
@@ -95,26 +100,27 @@ export class PromoModel {
 
     fields.push(`updated_at = NOW()`);
     values.push(id);
+    values.push(shopId);
 
     const result = await pool.query(
-      `UPDATE promos SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`,
+      `UPDATE promos SET ${fields.join(', ')} WHERE id = $${paramCount} AND shop_id = $${paramCount + 1} RETURNING *`,
       values
     );
     return result.rows[0] || null;
   }
 
-  static async updateActive(id: number, active: boolean): Promise<Promo | null> {
+  static async updateActive(id: number, active: boolean, shopId: string): Promise<Promo | null> {
     const result = await pool.query(
-      'UPDATE promos SET active = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
-      [active, id]
+      'UPDATE promos SET active = $1, updated_at = NOW() WHERE id = $2 AND shop_id = $3 RETURNING *',
+      [active, id, shopId]
     );
     return result.rows[0] || null;
   }
 
-  static async delete(id: number): Promise<boolean> {
+  static async delete(id: number, shopId: string): Promise<boolean> {
     const result = await pool.query(
-      'DELETE FROM promos WHERE id = $1',
-      [id]
+      'DELETE FROM promos WHERE id = $1 AND shop_id = $2',
+      [id, shopId]
     );
     return result.rowCount ? result.rowCount > 0 : false;
   }
