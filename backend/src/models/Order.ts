@@ -5,6 +5,7 @@ import { BusinessHoursModel } from './BusinessHours';
 export interface Order {
   id: number;
   user_id?: number;
+  shop_id: string;
   guest_email?: string;
   guest_name?: string;
   guest_phone?: string;
@@ -39,6 +40,7 @@ export interface OrderWithItems extends Order {
 
 export interface CreateOrderData {
   user_id?: number;
+  shop_id: string;
   guest_email?: string;
   guest_name?: string;
   guest_phone?: string;
@@ -66,12 +68,13 @@ export class OrderModel {
       // Create tracking token for guest orders
       const tracking_token = orderData.user_id ? null : randomUUID();
 
-      // Insert order
+      // Insert order WITH shop_id
       const orderResult = await client.query(
-        `INSERT INTO orders (user_id, guest_email, guest_name, guest_phone, total, status, payment_intent_id, tracking_token, pickup_time, scheduled_time, is_scheduled)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+        `INSERT INTO orders (user_id, shop_id, guest_email, guest_name, guest_phone, total, status, payment_intent_id, tracking_token, pickup_time, scheduled_time, is_scheduled)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
         [
           orderData.user_id,
+          orderData.shop_id,
           orderData.guest_email,
           orderData.guest_name,
           orderData.guest_phone,
@@ -120,14 +123,19 @@ export class OrderModel {
     }
   }
 
-  static async getById(id: number): Promise<OrderWithItems | null> {
-    const orderResult = await pool.query(
-      `SELECT o.*, u.email as user_email
-       FROM orders o
-       LEFT JOIN users u ON o.user_id = u.id
-       WHERE o.id = $1`,
-      [id]
-    );
+  static async getById(id: number, shopId?: string): Promise<OrderWithItems | null> {
+    const query = shopId
+      ? `SELECT o.*, u.email as user_email
+         FROM orders o
+         LEFT JOIN users u ON o.user_id = u.id
+         WHERE o.id = $1 AND o.shop_id = $2`
+      : `SELECT o.*, u.email as user_email
+         FROM orders o
+         LEFT JOIN users u ON o.user_id = u.id
+         WHERE o.id = $1`;
+
+    const params = shopId ? [id, shopId] : [id];
+    const orderResult = await pool.query(query, params);
 
     if (orderResult.rows.length === 0) return null;
 
@@ -146,6 +154,7 @@ export class OrderModel {
   }
 
   static async getByTrackingToken(token: string): Promise<OrderWithItems | null> {
+    // Guest tracking tokens are globally unique, no shop filter needed
     const orderResult = await pool.query(
       `SELECT o.*, u.email as user_email
        FROM orders o
@@ -170,14 +179,14 @@ export class OrderModel {
     };
   }
 
-  static async getByUserId(userId: number): Promise<OrderWithItems[]> {
+  static async getByUserId(userId: number, shopId: string): Promise<OrderWithItems[]> {
     const orderResult = await pool.query(
       `SELECT o.*, u.email as user_email
        FROM orders o
        LEFT JOIN users u ON o.user_id = u.id
-       WHERE o.user_id = $1
+       WHERE o.user_id = $1 AND o.shop_id = $2
        ORDER BY o.created_at DESC`,
-      [userId]
+      [userId, shopId]
     );
 
     const orders: OrderWithItems[] = [];
@@ -198,16 +207,16 @@ export class OrderModel {
     return orders;
   }
 
-  static async getByStatus(statuses: string[]): Promise<OrderWithItems[]> {
+  static async getByStatus(statuses: string[], shopId: string): Promise<OrderWithItems[]> {
     const placeholders = statuses.map((_, i) => `$${i + 1}`).join(', ');
 
     const orderResult = await pool.query(
       `SELECT o.*, u.email as user_email
        FROM orders o
        LEFT JOIN users u ON o.user_id = u.id
-       WHERE o.status IN (${placeholders})
+       WHERE o.status IN (${placeholders}) AND o.shop_id = $${statuses.length + 1}
        ORDER BY o.created_at ASC`,
-      statuses
+      [...statuses, shopId]
     );
 
     const orders: OrderWithItems[] = [];
@@ -253,14 +262,15 @@ export class OrderModel {
     return result.rows[0] || null;
   }
 
-  static async getRecentOrders(limit: number = 50): Promise<OrderWithItems[]> {
+  static async getRecentOrders(limit: number = 50, shopId: string): Promise<OrderWithItems[]> {
     const orderResult = await pool.query(
       `SELECT o.*, u.email as user_email
        FROM orders o
        LEFT JOIN users u ON o.user_id = u.id
+       WHERE o.shop_id = $1
        ORDER BY o.created_at DESC
-       LIMIT $1`,
-      [limit]
+       LIMIT $2`,
+      [shopId, limit]
     );
 
     const orders: OrderWithItems[] = [];
@@ -332,7 +342,7 @@ export class OrderModel {
   /**
    * Get all orders scheduled for a specific date
    */
-  static async getScheduledOrders(date: Date): Promise<OrderWithItems[]> {
+  static async getScheduledOrders(date: Date, shopId: string): Promise<OrderWithItems[]> {
     // Create start and end of day for the given date
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
@@ -346,8 +356,9 @@ export class OrderModel {
          AND scheduled_time >= $1
          AND scheduled_time <= $2
          AND status != 'cancelled'
+         AND shop_id = $3
        ORDER BY scheduled_time ASC`,
-      [startOfDay, endOfDay]
+      [startOfDay, endOfDay, shopId]
     );
 
     const orders: OrderWithItems[] = [];
