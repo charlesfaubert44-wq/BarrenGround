@@ -165,6 +165,7 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
     // Create order in database
     const order = await OrderModel.create({
       user_id,
+      shop_id: req.shop!.id,
       guest_email,
       guest_name,
       guest_phone,
@@ -208,7 +209,8 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
           user_id,
           order.id,
           originalTotal,
-          `Purchase - Order #${order.id}`
+          `Purchase - Order #${order.id}`,
+          req.shop!.id
         );
       } catch (error) {
         console.error('Failed to award loyalty points:', error);
@@ -247,17 +249,17 @@ export async function getOrder(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const order = await OrderModel.getById(id);
+    const order = await OrderModel.getById(id, req.shop!.id);
 
     if (!order) {
       res.status(404).json({ error: 'Order not found' });
       return;
     }
 
-    // Check authorization: user can only see their own orders, or if they're an employee
-    if (order.user_id && req.user?.userId !== order.user_id) {
-      // In a real app, we'd check if the user is an employee
-      // For now, we'll allow it
+    // Authorization check: user can see own orders or if employee
+    if (order.user_id && req.user?.userId !== order.user_id && req.user?.role !== 'employee') {
+      res.status(403).json({ error: 'Forbidden' });
+      return;
     }
 
     res.json(order);
@@ -292,7 +294,7 @@ export async function getUserOrders(req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const orders = await OrderModel.getByUserId(req.user.userId);
+    const orders = await OrderModel.getByUserId(req.user.userId, req.shop!.id);
 
     res.json(orders);
   } catch (error) {
@@ -312,7 +314,7 @@ export async function getOrdersByStatus(req: Request, res: Response): Promise<vo
 
     const statuses = typeof status === 'string' ? status.split(',') : [];
 
-    const orders = await OrderModel.getByStatus(statuses);
+    const orders = await OrderModel.getByStatus(statuses, req.shop!.id);
 
     res.json(orders);
   } catch (error) {
@@ -373,7 +375,7 @@ export async function getRecentOrders(req: Request, res: Response): Promise<void
   try {
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
 
-    const orders = await OrderModel.getRecentOrders(limit);
+    const orders = await OrderModel.getRecentOrders(limit, req.shop!.id);
 
     res.json(orders);
   } catch (error) {
