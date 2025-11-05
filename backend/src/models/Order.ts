@@ -294,7 +294,7 @@ export class OrderModel {
   /**
    * Validate scheduled time for an order
    */
-  static async validateScheduledTime(scheduledTime: Date): Promise<{
+  static async validateScheduledTime(scheduledTime: Date, shopId: string): Promise<{
     valid: boolean;
     error?: string;
   }> {
@@ -319,7 +319,7 @@ export class OrderModel {
     }
 
     // Check business hours
-    const isOpen = await BusinessHoursModel.isOpen(scheduledTime);
+    const isOpen = await BusinessHoursModel.isOpen(scheduledTime, shopId);
     if (!isOpen) {
       return {
         valid: false,
@@ -328,7 +328,7 @@ export class OrderModel {
     }
 
     // Check slot capacity
-    const capacity = await BusinessHoursModel.getSlotCapacityWithSettings(scheduledTime);
+    const capacity = await BusinessHoursModel.getSlotCapacityWithSettings(scheduledTime, shopId);
     if (!capacity.available) {
       return {
         valid: false,

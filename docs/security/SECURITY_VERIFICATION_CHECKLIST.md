@@ -1,5 +1,9 @@
 # Security Hardening Verification Checklist
 
+> **Related Documentation:**
+> - [SECURITY_IMPLEMENTATION_SUMMARY.md](SECURITY_IMPLEMENTATION_SUMMARY.md) - Implementation details
+> - [SECURITY.md](SECURITY.md) - Security policy overview
+
 Use this checklist to verify that all security measures have been properly implemented and are functioning correctly.
 
 ## 1. Environment Variable Validation ✓

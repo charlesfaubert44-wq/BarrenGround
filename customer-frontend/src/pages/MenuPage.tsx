@@ -9,7 +9,7 @@ interface MenuItem {
   id: number;
   name: string;
   description: string;
-  price: number;
+  price: number | string; // API returns string, needs parsing
   category: string;
   image_url?: string;
   available: boolean;
@@ -79,7 +79,7 @@ export default function MenuPage() {
       addItem({
         id: item.id,
         name: item.name,
-        price: item.price,
+        price: parseFloat(String(item.price)),
         customizations: Object.keys(customizationObj).length > 0 ? customizationObj : undefined,
       });
     }
@@ -93,10 +93,11 @@ export default function MenuPage() {
     setSelectedItem(null);
   };
 
-  const getSizePrice = (basePrice: number, size: string) => {
-    if (size === 'Small') return basePrice - 0.50;
-    if (size === 'Large') return basePrice + 0.50;
-    return basePrice;
+  const getSizePrice = (basePrice: number | string, size: string) => {
+    const price = parseFloat(String(basePrice));
+    if (size === 'Small') return price - 0.50;
+    if (size === 'Large') return price + 0.50;
+    return price;
   };
 
   if (isLoading) {
@@ -201,7 +202,7 @@ export default function MenuPage() {
                 <div className="flex items-start justify-between mb-2">
                   <h3 className="text-lg font-bold text-stone-100">{item.name}</h3>
                   <span className="text-xl font-bold text-amber-500 ml-2">
-                    ${item.price.toFixed(2)}
+                    ${parseFloat(String(item.price)).toFixed(2)}
                   </span>
                 </div>
                 <p className="text-sm text-stone-400 line-clamp-2">{item.description}</p>

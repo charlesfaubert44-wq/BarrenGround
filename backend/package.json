@@ -24,6 +24,7 @@
   "dependencies": {
     "@sendgrid/mail": "^8.1.6",
     "bcrypt": "^6.0.0",
+    "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
@@ -40,6 +41,7 @@
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
+    "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
     "@types/express-rate-limit": "^5.1.3",

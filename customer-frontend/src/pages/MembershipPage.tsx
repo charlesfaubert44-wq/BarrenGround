@@ -15,7 +15,7 @@ export default function MembershipPage() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
   const { membership, setMembership } = useMembershipStore();
-  const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null);
+  const [, setSelectedPlan] = useState<MembershipPlan | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const queryClient = useQueryClient();
 

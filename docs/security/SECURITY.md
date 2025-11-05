@@ -1,5 +1,8 @@
 # Security Policy
 
+> **Last Updated:** November 4, 2025 | **Version:** 1.0
+> **For detailed implementation information**, see [SECURITY_IMPLEMENTATION_SUMMARY.md](SECURITY_IMPLEMENTATION_SUMMARY.md)
+
 ## Reporting a Vulnerability
 
 If you discover a security vulnerability in the Barren Ground Coffee system, please report it responsibly:

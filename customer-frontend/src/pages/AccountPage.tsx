@@ -43,13 +43,15 @@ export default function AccountPage() {
   const handleReorder = (order: any) => {
     // Add all items from the order to the cart
     order.items.forEach((item: any) => {
-      addItem({
-        id: item.menu_item_id,
-        name: item.menu_item_name,
-        price: item.price_snapshot,
-        quantity: item.quantity,
-        customizations: item.customizations || {},
-      });
+      // Add item multiple times for the quantity
+      for (let i = 0; i < item.quantity; i++) {
+        addItem({
+          id: item.menu_item_id,
+          name: item.menu_item_name,
+          price: item.price_snapshot,
+          customizations: item.customizations || {},
+        });
+      }
     });
     // Navigate to cart
     navigate('/cart');

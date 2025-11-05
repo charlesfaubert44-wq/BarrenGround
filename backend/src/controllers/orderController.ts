@@ -57,7 +57,7 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
 
     if (scheduled_time) {
       const scheduledDate = new Date(scheduled_time);
-      const validation = await OrderModel.validateScheduledTime(scheduledDate);
+      const validation = await OrderModel.validateScheduledTime(scheduledDate, req.shop!.id);
 
       if (!validation.valid) {
         res.status(400).json({ error: validation.error });
@@ -178,7 +178,7 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
 
     // Record membership usage if applicable
     if (membershipUsed && membershipId) {
-      await UserMembershipModel.decrementCoffees(membershipId);
+      await UserMembershipModel.decrementCoffees(membershipId, req.shop!.id);
       const coffeeItem = items.find((item: OrderItem) =>
         item.menu_item_name.toLowerCase().includes('coffee') ||
         item.menu_item_name.toLowerCase().includes('espresso') ||

@@ -131,7 +131,7 @@ export default function Header() {
               className="block py-3 px-4 hover:bg-stone-700 rounded-md transition font-bold tracking-wider text-sm border-2 border-stone-700"
               style={{ letterSpacing: '0.08em' }}
             >
-              ☕ MEMBERSHIP
+              MEMBERSHIP
             </Link>
             {isAuthenticated && (
               <Link

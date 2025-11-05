@@ -15,7 +15,15 @@ interface CustomizationModalProps {
   onAddToCart: (customizations: Record<string, string>) => void;
 }
 
-const CUSTOMIZATION_OPTIONS = {
+type CustomizationOption = {
+  label: string;
+  categories: string[];
+} & (
+  | { type: 'textarea' }
+  | { options: string[]; multiple?: boolean }
+);
+
+const CUSTOMIZATION_OPTIONS: Record<string, CustomizationOption> = {
   milk: {
     label: 'Milk',
     options: ['Whole Milk', 'Skim Milk', '2% Milk', 'Oat Milk', 'Almond Milk', 'Soy Milk', 'Coconut Milk', 'No Milk'],
@@ -156,7 +164,7 @@ export default function CustomizationModal({ item, isOpen, onClose, onAddToCart 
                   {config.label}
                 </label>
 
-                {config.type === 'textarea' ? (
+                {'type' in config && config.type === 'textarea' ? (
                   <textarea
                     value={customizations[key] || ''}
                     onChange={(e) => handleCustomizationChange(key, e.target.value)}
@@ -164,9 +172,9 @@ export default function CustomizationModal({ item, isOpen, onClose, onAddToCart 
                     className="w-full bg-stone-900 border-2 border-stone-700 rounded-lg px-4 py-3 text-stone-100 focus:border-amber-600 focus:outline-none resize-none"
                     rows={3}
                   />
-                ) : config.multiple ? (
+                ) : 'options' in config && config.multiple ? (
                   <div className="grid grid-cols-2 gap-2">
-                    {config.options!.map((option) => {
+                    {config.options.map((option: string) => {
                       const isSelected = (customizations[key] || '').split(', ').filter(Boolean).includes(option);
                       return (
                         <button
@@ -183,9 +191,9 @@ export default function CustomizationModal({ item, isOpen, onClose, onAddToCart 
                       );
                     })}
                   </div>
-                ) : (
+                ) : 'options' in config ? (
                   <div className="grid grid-cols-2 gap-2">
-                    {config.options!.map((option) => (
+                    {config.options.map((option: string) => (
                       <button
                         key={option}
                         onClick={() => handleCustomizationChange(key, option)}
@@ -199,7 +207,7 @@ export default function CustomizationModal({ item, isOpen, onClose, onAddToCart 
                       </button>
                     ))}
                   </div>
-                )}
+                ) : null}
               </div>
             ))
           )}

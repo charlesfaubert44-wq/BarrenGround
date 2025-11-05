@@ -103,7 +103,7 @@ export default function OrderQueuePage() {
                 {order.items.map((item, idx) => (
                   <div key={idx} className="text-sm">
                     <span className="font-medium">
-                      {item.quantity}x {item.name}
+                      {item.quantity}x {item.menu_item_name}
                     </span>
                     {item.customizations && (
                       <p className="text-gray-600 text-xs">

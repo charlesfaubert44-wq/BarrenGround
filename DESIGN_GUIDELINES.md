@@ -1,5 +1,6 @@
 # Barren Ground Coffee - Design System Guidelines
 
+> **Version:** 1.0 | **Last Updated:** November 4, 2025
 > **Author's Note**: These guidelines represent five decades of experience designing for hospitality, retail, and food service brands. From the early days of print catalogs to today's mobile-first experiences, these principles have stood the test of time.
 
 ## Table of Contents

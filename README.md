@@ -65,8 +65,8 @@ npm run dev
 
 This will start:
 - Backend API on `http://localhost:5000`
-- Customer Frontend on `http://localhost:8890`
-- Employee Dashboard on `http://localhost:8889`
+- Customer Frontend on `http://localhost:5173` (Vite default)
+- Employee Dashboard on `http://localhost:5174` (Vite default)
 
 ### Manual Setup (Individual Services)
 
@@ -109,7 +109,7 @@ cp .env.example .env
 npm run dev
 ```
 
-The customer frontend will run on `http://localhost:8890`
+The customer frontend will run on `http://localhost:5173`
 
 #### 3. Employee Dashboard Setup
 
@@ -128,7 +128,7 @@ cp .env.example .env
 npm run dev
 ```
 
-The employee dashboard will run on `http://localhost:8889`
+The employee dashboard will run on `http://localhost:5174`
 
 ## Environment Variables
 
@@ -139,8 +139,8 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/barrenground
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 JWT_SECRET=your_secret_here
-FRONTEND_URL=http://localhost:8890
-EMPLOYEE_DASHBOARD_URL=http://localhost:8889
+FRONTEND_URL=http://localhost:5173
+EMPLOYEE_DASHBOARD_URL=http://localhost:5174
 NODE_ENV=development
 ```
 
@@ -149,12 +149,14 @@ NODE_ENV=development
 VITE_API_URL=http://localhost:5000
 VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
 VITE_WS_URL=ws://localhost:5000
+# Vite dev server runs on port 5173 by default
 ```
 
 ### Employee Dashboard (.env)
 ```
 VITE_API_URL=http://localhost:5000
 VITE_WS_URL=ws://localhost:5000
+# Vite dev server runs on port 5174 by default
 ```
 
 ## Port Configuration
@@ -162,8 +164,8 @@ VITE_WS_URL=ws://localhost:5000
 | Service | Port |
 |---------|------|
 | Backend API | 5000 |
-| Customer Frontend | 8890 |
-| Employee Dashboard | 8889 |
+| Customer Frontend | 5173 (Vite) |
+| Employee Dashboard | 5174 (Vite) |
 | PostgreSQL | 5432 |
 
 ## Features
@@ -296,31 +298,58 @@ The system is ready for end-to-end testing with these components:
 
 3. **Deployment:**
    - **Vercel (Recommended)**:
-     - Quick Start: See [VERCEL_QUICK_START.md](VERCEL_QUICK_START.md)
-     - Full Guide: See [VERCEL_DEPLOYMENT_GUIDE.md](VERCEL_DEPLOYMENT_GUIDE.md)
+     - Quick Start: See [VERCEL_QUICK_START.md](docs/deployment/VERCEL_QUICK_START.md)
+     - Full Guide: See [VERCEL_DEPLOYMENT_GUIDE.md](docs/deployment/VERCEL_DEPLOYMENT_GUIDE.md)
      - Deploy all 3 apps to Vercel in 10 minutes
      - Polling-based real-time updates (5-10s)
      - Serverless, auto-scaling, free tier available
-     - Database migrations: See [RUN_MIGRATIONS_MANUAL.md](RUN_MIGRATIONS_MANUAL.md)
+     - Database migrations: See [RUN_MIGRATIONS_MANUAL.md](docs/deployment/RUN_MIGRATIONS_MANUAL.md)
 
 ## Documentation
 
-- **Deployment**:
-  - [Vercel Quick Start](VERCEL_QUICK_START.md) - Deploy in 10 minutes
-  - [Vercel Full Guide](VERCEL_DEPLOYMENT_GUIDE.md) - Complete configuration & troubleshooting
-  - [Database Migrations](RUN_MIGRATIONS_MANUAL.md) - Supabase setup
-  - [Supabase Setup](SUPABASE_SETUP.md) - Database configuration
+> **📖 Complete Documentation Index:** [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md) - Full guide to all documentation
 
-- **Implementation**:
-  - [Implementation Complete](IMPLEMENTATION_COMPLETE.md) - All features summary
-  - [API Reference](backend/API_REFERENCE.md) - Complete API documentation
-  - [Testing Guide](backend/TESTING_GUIDE.md) - Running tests
-  - [Email Setup](backend/EMAIL_SETUP.md) - SendGrid configuration
-  - [Security](SECURITY.md) - Security features and best practices
+### Getting Started
+- [Quick Start](docs/setup/QUICKSTART.md) - Fast setup guide
+- [Setup Guide](docs/setup/SETUP.md) - Detailed setup instructions
+- [Windows Setup](docs/setup/SETUP_WINDOWS.md) - Windows-specific instructions
 
-- **Architecture**:
-  - [Design Document](docs/plans/2025-11-01-coffee-ordering-system-prd.md)
-  - [Task Breakdown](.taskmaster/tasks/000-overview.md) - Development roadmap
+### Deployment
+- [Vercel Quick Start](docs/deployment/VERCEL_QUICK_START.md) - Deploy in 10 minutes
+- [Vercel Deployment Guide](docs/deployment/VERCEL_DEPLOYMENT_GUIDE.md) - Complete configuration & troubleshooting
+- [Railway Deployment](docs/deployment/RAILWAY_DEPLOYMENT.md) - Alternative hosting option
+- [Database Migrations](docs/deployment/RUN_MIGRATIONS_MANUAL.md) - Production database setup
+- [Supabase Setup](docs/deployment/SUPABASE_SETUP.md) - Database configuration
+
+### Implementation Status
+- [Implementation Complete](IMPLEMENTATION_COMPLETE.md) - All 8 tasks completed (Nov 4, 2025)
+- [Security Implementation](docs/security/SECURITY_IMPLEMENTATION_SUMMARY.md) - Security hardening details
+- [Testing Implementation](docs/features/TESTING_IMPLEMENTATION_SUMMARY.md) - Test suite details
+- [Scheduling Implementation](docs/features/SCHEDULING_IMPLEMENTATION_SUMMARY.md) - Order scheduling details
+- [Email Implementation](docs/features/TASK_008_IMPLEMENTATION_SUMMARY.md) - Email notification details
+
+### Backend Documentation
+- [API Reference](backend/API_REFERENCE.md) - Complete API documentation
+- [Testing Guide](backend/TESTING_GUIDE.md) - Running backend tests
+- [Email Setup](backend/EMAIL_SETUP.md) - SendGrid configuration
+- [Migration Guide](backend/MIGRATION_GUIDE.md) - Database migrations
+
+### Configuration & Security
+- [Backend Environment Variables](docs/setup/BACKEND_ENV_VARS.md) - Complete env var reference
+- [Security Features](docs/security/SECURITY.md) - Security overview
+- [Security Verification](docs/security/SECURITY_VERIFICATION_CHECKLIST.md) - Testing security
+- [Stripe Setup](docs/setup/STRIPE_SETUP.md) - Payment integration
+- [Get Stripe Keys](docs/setup/GET_STRIPE_KEYS.md) - Stripe credential guide
+
+### Features
+- [Membership Implementation](docs/features/MEMBERSHIP_IMPLEMENTATION.md) - Membership system details
+- [Membership Demo](docs/features/MEMBERSHIP_DEMO.md) - Testing membership features
+- [Employee Dashboard Features](docs/features/EMPLOYEE_DASHBOARD_FEATURES.md) - Dashboard capabilities
+
+### Architecture & Design
+- [Product Requirements](docs/plans/2025-11-01-coffee-ordering-system-prd.md) - PRD
+- [System Design](docs/plans/2025-11-01-coffee-ordering-system-design.md) - Architecture
+- [Design Guidelines](DESIGN_GUIDELINES.md) - UI/UX design system
 
 ## License
 

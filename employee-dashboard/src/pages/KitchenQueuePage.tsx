@@ -6,7 +6,7 @@ import { useWebSocket } from '../hooks/useWebSocket';
 export default function KitchenQueuePage() {
   const queryClient = useQueryClient();
   const { on, off, isConnected } = useWebSocket();
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [, setCurrentTime] = useState(new Date());
 
   const { data: activeOrders = [] } = useQuery({
     queryKey: ['orders', 'active'],

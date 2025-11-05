@@ -210,6 +210,10 @@ if (process.env.NODE_ENV !== "test") {
     validateConfig(shopConfig);
   } catch (error) {
     console.error("❌ Configuration Error:", (error as Error).message);
+    // In serverless environments, throw instead of exit
+    if (process.env.NODE_ENV === "production") {
+      throw error;
+    }
     process.exit(1);
   }
 }

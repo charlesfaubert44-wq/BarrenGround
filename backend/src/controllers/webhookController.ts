@@ -104,7 +104,7 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent, req: Re
   const order = await OrderModel.findByPaymentIntentId(paymentIntent.id);
 
   if (order) {
-    await OrderModel.updateStatus(order.id, order.shop_id, 'received');
+    await OrderModel.updateStatus(order.id, 'received');
     console.log(`Order ${order.id} marked as received`);
   }
 }
@@ -116,7 +116,7 @@ async function handlePaymentFailure(paymentIntent: Stripe.PaymentIntent): Promis
   const order = await OrderModel.findByPaymentIntentId(paymentIntent.id);
 
   if (order) {
-    await OrderModel.updateStatus(order.id, order.shop_id, 'cancelled');
+    await OrderModel.updateStatus(order.id, 'cancelled');
     console.log(`Order ${order.id} marked as cancelled due to payment failure`);
   }
 }

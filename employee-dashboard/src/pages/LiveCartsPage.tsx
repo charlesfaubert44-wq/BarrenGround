@@ -21,7 +21,7 @@ interface ActiveCart {
 
 export default function LiveCartsPage() {
   const [carts, setCarts] = useState<ActiveCart[]>([]);
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
     // Fetch initial carts

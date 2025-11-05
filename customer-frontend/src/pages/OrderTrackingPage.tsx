@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
 import { apiRequest } from '../api/client';
 import { useAuthStore } from '../store/authStore';
@@ -27,14 +27,13 @@ interface Order {
 
 export default function OrderTrackingPage() {
   const { token } = useParams<{ token: string }>();
-  const navigate = useNavigate();
   const { isAuthenticated } = useAuthStore();
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [, setSocket] = useState<Socket | null>(null);
   const [elapsedTime, setElapsedTime] = useState<number>(0);
-  const [pickupTimeRemaining, setPickupTimeRemaining] = useState<number>(0);
+  const [, setPickupTimeRemaining] = useState<number>(0);
   const [customerStatus, setCustomerStatus] = useState<'on-my-way' | 'delayed' | 'wont-make-it' | null>(null);
 
   // Fetch order by tracking token
