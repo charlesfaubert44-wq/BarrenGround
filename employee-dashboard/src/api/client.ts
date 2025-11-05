@@ -44,6 +44,12 @@ export async function apiRequest<T>(
     headers['Authorization'] = `Bearer ${authToken}`;
   }
 
+  // Add shop ID header for multi-tenant support in development mode
+  if (import.meta.env.DEV) {
+    const shopId = import.meta.env.VITE_SHOP_ID || 'barrenground';
+    headers['X-Shop-ID'] = shopId;
+  }
+
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     headers,
