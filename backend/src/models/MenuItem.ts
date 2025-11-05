@@ -7,95 +7,93 @@ export interface MenuItem {
   price: number;
   category: string;
   image_url?: string;
-  available: boolean;
+  is_available: boolean;
+  customization_options?: any;
+  shop_id: string;
   created_at: Date;
 }
 
+export interface CreateMenuItemData {
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  image_url?: string;
+  is_available?: boolean;
+  customization_options?: any;
+}
+
 export class MenuItemModel {
-  static async getAll(): Promise<MenuItem[]> {
+  static async getAll(shopId: string): Promise<MenuItem[]> {
     const result = await pool.query(
-      'SELECT * FROM menu_items ORDER BY category, name'
+      'SELECT * FROM menu_items WHERE shop_id = $1 ORDER BY category, name',
+      [shopId]
     );
     return result.rows;
   }
 
-  static async getAvailable(): Promise<MenuItem[]> {
+  static async getAvailable(shopId: string): Promise<MenuItem[]> {
     const result = await pool.query(
-      'SELECT * FROM menu_items WHERE available = true ORDER BY category, name'
+      'SELECT * FROM menu_items WHERE is_available = true AND shop_id = $1 ORDER BY category, name',
+      [shopId]
     );
     return result.rows;
   }
 
-  static async getById(id: number): Promise<MenuItem | null> {
+  static async getById(id: number, shopId: string): Promise<MenuItem | null> {
     const result = await pool.query(
-      'SELECT * FROM menu_items WHERE id = $1',
-      [id]
+      'SELECT * FROM menu_items WHERE id = $1 AND shop_id = $2',
+      [id, shopId]
     );
     return result.rows[0] || null;
   }
 
-  static async updateAvailability(id: number, available: boolean): Promise<MenuItem | null> {
+  static async create(data: CreateMenuItemData, shopId: string): Promise<MenuItem> {
     const result = await pool.query(
-      'UPDATE menu_items SET available = $1 WHERE id = $2 RETURNING *',
-      [available, id]
-    );
-    return result.rows[0] || null;
-  }
-
-  static async create(item: Omit<MenuItem, 'id' | 'created_at'>): Promise<MenuItem> {
-    const result = await pool.query(
-      `INSERT INTO menu_items (name, description, price, category, image_url, available)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [item.name, item.description, item.price, item.category, item.image_url, item.available]
+      `INSERT INTO menu_items (name, description, price, category, image_url, is_available, customization_options, shop_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [data.name, data.description, data.price, data.category, data.image_url, data.is_available ?? true, JSON.stringify(data.customization_options || []), shopId]
     );
     return result.rows[0];
   }
 
-  static async update(id: number, item: Partial<Omit<MenuItem, 'id' | 'created_at'>>): Promise<MenuItem | null> {
+  static async update(id: number, updates: Partial<MenuItem>, shopId: string): Promise<MenuItem | null> {
+    // Build dynamic update query with shop_id verification
     const fields: string[] = [];
-    const values: (string | number | boolean)[] = [];
+    const values: any[] = [];
     let paramCount = 1;
 
-    if (item.name !== undefined) {
-      fields.push(`name = $${paramCount++}`);
-      values.push(item.name);
-    }
-    if (item.description !== undefined) {
-      fields.push(`description = $${paramCount++}`);
-      values.push(item.description);
-    }
-    if (item.price !== undefined) {
-      fields.push(`price = $${paramCount++}`);
-      values.push(item.price);
-    }
-    if (item.category !== undefined) {
-      fields.push(`category = $${paramCount++}`);
-      values.push(item.category);
-    }
-    if (item.image_url !== undefined) {
-      fields.push(`image_url = $${paramCount++}`);
-      values.push(item.image_url);
-    }
-    if (item.available !== undefined) {
-      fields.push(`available = $${paramCount++}`);
-      values.push(item.available);
-    }
+    Object.entries(updates).forEach(([key, value]) => {
+      if (key !== 'id' && key !== 'shop_id' && value !== undefined) {
+        fields.push(`${key} = $${paramCount++}`);
+        values.push(key === 'customization_options' ? JSON.stringify(value) : value);
+      }
+    });
 
     if (fields.length === 0) return null;
 
-    values.push(id);
+    values.push(id, shopId);
+
     const result = await pool.query(
-      `UPDATE menu_items SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`,
+      `UPDATE menu_items SET ${fields.join(', ')} WHERE id = $${paramCount++} AND shop_id = $${paramCount++} RETURNING *`,
       values
     );
     return result.rows[0] || null;
   }
 
-  static async delete(id: number): Promise<boolean> {
+  static async delete(id: number, shopId: string): Promise<boolean> {
     const result = await pool.query(
-      'DELETE FROM menu_items WHERE id = $1',
-      [id]
+      'DELETE FROM menu_items WHERE id = $1 AND shop_id = $2',
+      [id, shopId]
     );
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  static async updateAvailability(id: number, isAvailable: boolean, shopId: string): Promise<MenuItem | null> {
+    const result = await pool.query(
+      'UPDATE menu_items SET is_available = $1 WHERE id = $2 AND shop_id = $3 RETURNING *',
+      [isAvailable, id, shopId]
+    );
+    return result.rows[0] || null;
   }
 }
