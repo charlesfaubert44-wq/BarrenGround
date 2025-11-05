@@ -44,11 +44,11 @@ export async function apiRequest<T>(
     headers['Authorization'] = `Bearer ${authToken}`;
   }
 
-  // Add shop ID header for multi-tenant support in development mode
-  if (import.meta.env.DEV) {
-    const shopId = import.meta.env.VITE_SHOP_ID || 'barrenground';
-    headers['X-Shop-ID'] = shopId;
-  }
+  // Add shop ID header for multi-tenant support
+  // In production, this should come from subdomain/domain detection
+  // For now, use environment variable or default to 'barrenground'
+  const shopId = import.meta.env.VITE_SHOP_ID || 'barrenground';
+  headers['X-Shop-ID'] = shopId;
 
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
