@@ -17,7 +17,7 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
     return;
   }
 
-  req.user = { ...payload, id: payload.userId };
+  req.user = { ...payload, id: payload.userId, shopId: payload.shopId || req.shop?.id || '' };
   next();
 }
 
@@ -28,7 +28,7 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction): v
   if (token) {
     const payload = verifyToken(token);
     if (payload) {
-      req.user = { ...payload, id: payload.userId };
+      req.user = { ...payload, id: payload.userId, shopId: payload.shopId || req.shop?.id || '' };
     }
   }
 
