@@ -11,6 +11,9 @@ export async function extractTenantContext(
     const host = req.hostname;
     const parts = host.split('.');
 
+    console.log('[Tenant Context] Request host:', host);
+    console.log('[Tenant Context] X-Shop-ID header:', req.headers['x-shop-id']);
+
     let shop = null;
 
     // Check if it's a subdomain pattern (subdomain.platform.com)
@@ -27,7 +30,9 @@ export async function extractTenantContext(
     // Method 3: Extract from X-Shop-ID header (for testing/admin)
     if (!shop && req.headers['x-shop-id']) {
       const shopId = req.headers['x-shop-id'] as string;
+      console.log('[Tenant Context] Looking up shop by X-Shop-ID:', shopId);
       shop = await ShopModel.findById(shopId);
+      console.log('[Tenant Context] Shop found:', shop ? shop.id : 'null');
     }
 
     // Method 4: Fall back to default shop (development only)
