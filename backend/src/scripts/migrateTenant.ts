@@ -8,7 +8,7 @@
  */
 
 import pool from '../config/database';
-import { v4 as uuidv4 } from 'crypto';
+import { randomUUID } from 'crypto';
 
 interface MigrationStats {
   usersUpdated: number;

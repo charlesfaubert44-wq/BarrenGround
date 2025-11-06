@@ -15,7 +15,7 @@ export async function getPaymentMethods(req: Request, res: Response): Promise<vo
       return;
     }
 
-    const paymentMethods = await PaymentMethodModel.findByUserId(req.user.userId);
+    const paymentMethods = await PaymentMethodModel.findByUserId(req.user.userId, req.shop!.id);
     res.json({ paymentMethods });
   } catch (error) {
     console.error('Get payment methods error:', error);
@@ -102,6 +102,7 @@ export async function savePaymentMethod(req: Request, res: Response): Promise<vo
     // Save to database
     const savedPaymentMethod = await PaymentMethodModel.create({
       user_id: req.user.userId,
+      shop_id: req.shop!.id,
       stripe_payment_method_id: payment_method_id,
       type: paymentMethod.type,
       last4: paymentMethod.card?.last4,
@@ -133,7 +134,8 @@ export async function setDefaultPaymentMethod(req: Request, res: Response): Prom
 
     const paymentMethod = await PaymentMethodModel.setAsDefault(
       parseInt(id),
-      req.user.userId
+      req.user.userId,
+      req.shop!.id
     );
 
     if (!paymentMethod) {
@@ -167,7 +169,7 @@ export async function deletePaymentMethod(req: Request, res: Response): Promise<
     const { id } = req.params;
 
     // Get payment method from database
-    const paymentMethod = await PaymentMethodModel.findById(parseInt(id));
+    const paymentMethod = await PaymentMethodModel.findById(parseInt(id), req.shop!.id);
 
     if (!paymentMethod || paymentMethod.user_id !== req.user.userId) {
       res.status(404).json({ error: 'Payment method not found' });
@@ -183,7 +185,7 @@ export async function deletePaymentMethod(req: Request, res: Response): Promise<
     }
 
     // Delete from database
-    await PaymentMethodModel.delete(parseInt(id), req.user.userId);
+    await PaymentMethodModel.delete(parseInt(id), req.user.userId, req.shop!.id);
 
     res.json({ message: 'Payment method deleted successfully' });
   } catch (error) {

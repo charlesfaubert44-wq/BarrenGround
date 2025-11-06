@@ -164,6 +164,7 @@ export async function createSubscription(req: Request, res: Response): Promise<v
     const membership = await UserMembershipModel.create({
       user_id: req.user.userId,
       plan_id: planId,
+      shop_id: req.shop!.id,
       status: 'active',
       stripe_subscription_id: subscription.id,
       stripe_customer_id: customer.id,
