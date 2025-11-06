@@ -28,11 +28,22 @@ export default function LiveCartsPage() {
     const fetchCarts = async () => {
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8888';
-        const response = await fetch(`${apiUrl}/api/carts/active`);
+        const response = await fetch(`${apiUrl}/api/carts/active`, {
+          headers: {
+            'X-Shop-ID': import.meta.env.VITE_SHOP_ID || 'barrenground',
+          }
+        });
+        if (!response.ok) {
+          console.warn('Active carts endpoint not available (404). This feature is not yet implemented.');
+          setCarts([]);
+          return;
+        }
         const data = await response.json();
-        setCarts(data);
+        // Ensure data is an array
+        setCarts(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Failed to fetch active carts:', error);
+        setCarts([]);
       }
     };
 
