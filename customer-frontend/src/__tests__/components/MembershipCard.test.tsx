@@ -15,7 +15,6 @@ describe('MembershipCard Component', () => {
     plan_id: 1,
     status: 'active',
     coffees_remaining: 5,
-    last_redemption_date: null,
     current_period_start: new Date().toISOString(),
     current_period_end: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     stripe_subscription_id: 'sub_123',
