@@ -34,17 +34,24 @@ export const createOrderValidation = [
   body('items.*.menu_item_name').trim().isLength({ min: 1 }),
   body('items.*.quantity').isInt({ min: 1 }),
   body('items.*.price_snapshot').isFloat({ min: 0 }),
-  body('guest_email').optional().isEmail(),
-  body('guest_name').optional().trim().isLength({ min: 1 }),
-  body('guest_phone').optional().trim(),
-  body('pickup_time').optional().isISO8601(),
-  body('scheduled_time').optional().isISO8601(),
+  body('items.*.customizations').optional(),
+  body('guest_email').optional({ values: 'null' }).isEmail(),
+  body('guest_name').optional({ values: 'null' }).trim().isLength({ min: 1 }),
+  body('guest_phone').optional({ values: 'null' }).trim(),
+  body('pickup_time').optional({ values: 'null' }).isISO8601(),
+  body('scheduled_time').optional({ values: 'null' }).isISO8601(),
+  body('total').optional().isFloat({ min: 0 }),
+  body('useMembership').optional().isBoolean(),
+  body('redeemPoints').optional().isInt({ min: 0 }),
 ];
 
 export async function createOrder(req: Request, res: Response): Promise<void> {
   try {
+    console.log('[Order Controller] Received order request:', JSON.stringify(req.body, null, 2));
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('[Order Controller] Validation errors:', JSON.stringify(errors.array(), null, 2));
       res.status(400).json({ errors: errors.array() });
       return;
     }
