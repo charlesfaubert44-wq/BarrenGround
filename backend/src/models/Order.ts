@@ -148,7 +148,11 @@ export class OrderModel {
 
     return {
       ...order,
-      items: itemsResult.rows,
+      total: parseFloat(order.total),
+      items: itemsResult.rows.map((item: any) => ({
+        ...item,
+        price_snapshot: parseFloat(item.price_snapshot),
+      })),
       customer_name: order.guest_name || 'Registered User',
     };
   }
@@ -174,7 +178,11 @@ export class OrderModel {
 
     return {
       ...order,
-      items: itemsResult.rows,
+      total: parseFloat(order.total),
+      items: itemsResult.rows.map((item: any) => ({
+        ...item,
+        price_snapshot: parseFloat(item.price_snapshot),
+      })),
       customer_name: order.guest_name || 'Registered User',
     };
   }
@@ -199,7 +207,11 @@ export class OrderModel {
 
       orders.push({
         ...order,
-        items: itemsResult.rows,
+        total: parseFloat(order.total),
+        items: itemsResult.rows.map((item: any) => ({
+          ...item,
+          price_snapshot: parseFloat(item.price_snapshot),
+        })),
         customer_name: 'Registered User',
       });
     }
@@ -229,7 +241,11 @@ export class OrderModel {
 
       orders.push({
         ...order,
-        items: itemsResult.rows,
+        total: parseFloat(order.total),
+        items: itemsResult.rows.map((item: any) => ({
+          ...item,
+          price_snapshot: parseFloat(item.price_snapshot),
+        })),
         customer_name: order.guest_name || 'Registered User',
       });
     }
@@ -283,7 +299,11 @@ export class OrderModel {
 
       orders.push({
         ...order,
-        items: itemsResult.rows,
+        total: parseFloat(order.total),
+        items: itemsResult.rows.map((item: any) => ({
+          ...item,
+          price_snapshot: parseFloat(item.price_snapshot),
+        })),
         customer_name: order.guest_name || 'Registered User',
       });
     }
