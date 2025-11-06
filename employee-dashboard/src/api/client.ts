@@ -55,6 +55,17 @@ export async function apiRequest<T>(
     headers,
   });
 
+  // Check if response is JSON
+  const contentType = response.headers.get('content-type');
+  if (!contentType || !contentType.includes('application/json')) {
+    const text = await response.text();
+    console.error(`Expected JSON but got: ${contentType}`, text.substring(0, 200));
+    throw {
+      error: 'Invalid response format',
+      message: `Expected JSON but received ${contentType}`,
+    } as ApiError;
+  }
+
   const data = await response.json();
 
   if (!response.ok) {

@@ -25,7 +25,7 @@ export default function LiveCartsPage() {
   useEffect(() => {
     // Get auth token from localStorage
     const getAuthToken = () => {
-      const authStorage = localStorage.getItem('auth-storage');
+      const authStorage = localStorage.getItem('employee-auth-storage');
       if (!authStorage) return null;
       try {
         const parsed = JSON.parse(authStorage);
