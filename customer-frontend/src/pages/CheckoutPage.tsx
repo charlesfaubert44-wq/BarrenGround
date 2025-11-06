@@ -162,21 +162,18 @@ export default function CheckoutPage() {
       const orderData = {
         items: items.map(item => ({
           menu_item_id: item.id,
-          name: item.name,
+          menu_item_name: item.name,
           quantity: item.quantity,
-          price: item.price,
+          price_snapshot: item.price,
           customizations: item.customizations,
         })),
         total: total,
-        pickupTime: pickupTime,
+        pickup_time: pickupTime,
         useMembership: useMembership && canUseMembership,
         redeemPoints: usePoints && pointsToRedeem >= 100 ? pointsToRedeem : undefined,
-        guestInfo: isAuthenticated ? undefined : {
-          name: guestName,
-          email: guestEmail,
-          phone: guestPhone || undefined,
-        },
-        userId: isAuthenticated && user ? user.id : undefined,
+        guest_name: !isAuthenticated ? guestName : undefined,
+        guest_email: !isAuthenticated ? guestEmail : undefined,
+        guest_phone: !isAuthenticated && guestPhone ? guestPhone : undefined,
       };
 
       const order = await apiRequest<{id: number, trackingToken: string}>('/api/orders', {

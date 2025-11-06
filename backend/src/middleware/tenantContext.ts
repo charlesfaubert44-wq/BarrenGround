@@ -7,6 +7,12 @@ export async function extractTenantContext(
   next: NextFunction
 ): Promise<void> {
   try {
+    // Skip tenant context for health check and webhooks
+    if (req.path === '/health' || req.path.startsWith('/webhooks')) {
+      next();
+      return;
+    }
+
     // Method 1: Extract from subdomain (e.g., barrenground.platform.com)
     const host = req.hostname;
     const parts = host.split('.');
