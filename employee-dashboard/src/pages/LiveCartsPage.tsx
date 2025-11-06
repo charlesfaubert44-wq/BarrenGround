@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
 
 interface CartItem {
   id: number;
@@ -17,67 +16,69 @@ interface ActiveCart {
   itemCount: number;
   lastUpdated: number;
   createdAt: number;
+  shopId: string;
 }
 
 export default function LiveCartsPage() {
   const [carts, setCarts] = useState<ActiveCart[]>([]);
-  const [, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
-    // Fetch initial carts
-    const fetchCarts = async () => {
+    // Get auth token from localStorage
+    const getAuthToken = () => {
+      const authStorage = localStorage.getItem('auth-storage');
+      if (!authStorage) return null;
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8888';
-        const response = await fetch(`${apiUrl}/api/carts/active`, {
-          headers: {
-            'X-Shop-ID': import.meta.env.VITE_SHOP_ID || 'barrenground',
-          }
-        });
-        if (!response.ok) {
-          console.warn('Active carts endpoint not available (404). This feature is not yet implemented.');
-          setCarts([]);
-          return;
-        }
-        const data = await response.json();
-        // Ensure data is an array
-        setCarts(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error('Failed to fetch active carts:', error);
-        setCarts([]);
+        const parsed = JSON.parse(authStorage);
+        return parsed.state?.token;
+      } catch {
+        return null;
       }
     };
 
+    // Fetch active carts
+    const fetchCarts = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8888';
+        const token = getAuthToken();
+        const shopId = import.meta.env.VITE_SHOP_ID || 'barrenground';
+
+        if (!token) {
+          console.warn('No authentication token found');
+          return;
+        }
+
+        const response = await fetch(`${apiUrl}/api/carts/active`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'X-Shop-ID': shopId,
+            'Content-Type': 'application/json',
+          }
+        });
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            console.warn('Active carts endpoint not available (404)');
+            setCarts([]);
+            return;
+          }
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        setCarts(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error('Failed to fetch active carts:', error);
+      }
+    };
+
+    // Initial fetch
     fetchCarts();
 
-    // Connect to WebSocket for real-time updates
-    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8888';
-    const newSocket = io(wsUrl);
-
-    newSocket.on('connect', () => {
-      console.log('Connected to cart updates');
-    });
-
-    newSocket.on('cart_updated', (cart: ActiveCart) => {
-      setCarts((prevCarts) => {
-        const existingIndex = prevCarts.findIndex((c) => c.sessionId === cart.sessionId);
-        if (existingIndex >= 0) {
-          const newCarts = [...prevCarts];
-          newCarts[existingIndex] = cart;
-          return newCarts;
-        } else {
-          return [...prevCarts, cart];
-        }
-      });
-    });
-
-    newSocket.on('cart_removed', ({ sessionId }: { sessionId: string }) => {
-      setCarts((prevCarts) => prevCarts.filter((c) => c.sessionId !== sessionId));
-    });
-
-    setSocket(newSocket);
+    // Poll every 5 seconds for updates
+    const interval = setInterval(fetchCarts, 5000);
 
     return () => {
-      newSocket.close();
+      clearInterval(interval);
     };
   }, []);
 

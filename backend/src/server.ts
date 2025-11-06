@@ -12,6 +12,7 @@ import promoRoutes from './routes/promoRoutes';
 import newsRoutes from './routes/newsRoutes';
 import schedulingRoutes from './routes/schedulingRoutes';
 import loyaltyRoutes from './routes/loyaltyRoutes';
+import cartRoutes from './routes/cartRoutes';
 import { apiLimiter, authLimiter, orderLimiter } from './middleware/rateLimiter';
 import { enforceHTTPS } from './middleware/httpsRedirect';
 import { sanitizeInput } from './middleware/sanitize';
@@ -102,6 +103,7 @@ app.use('/api/promos', promoRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/scheduling', schedulingRoutes);
 app.use('/api/loyalty', loyaltyRoutes);
+app.use('/api/carts', cartRoutes);
 app.post('/api/stripe-connect/onboarding', authenticateToken, createOnboardingLink);
 
 // Start scheduled jobs in non-production environments

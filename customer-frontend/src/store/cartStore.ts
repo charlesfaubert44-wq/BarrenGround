@@ -34,11 +34,15 @@ const syncCartWithBackend = async (items: CartItem[], total: number) => {
   try {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8888';
     const sessionId = getSessionId();
+    const shopId = import.meta.env.VITE_SHOP_ID || 'barrenground';
 
     if (items.length === 0) {
       // Cart is empty, remove from backend
       await fetch(`${apiUrl}/api/carts/${sessionId}`, {
         method: 'DELETE',
+        headers: {
+          'X-Shop-ID': shopId,
+        },
       });
     } else {
       // Update cart on backend
@@ -46,11 +50,15 @@ const syncCartWithBackend = async (items: CartItem[], total: number) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Shop-ID': shopId,
         },
         body: JSON.stringify({
           sessionId,
-          items,
-          total,
+          cart: {
+            items,
+            total,
+            itemCount: items.reduce((count, item) => count + item.quantity, 0),
+          },
         }),
       });
     }
