@@ -148,6 +148,8 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
 
     // Create Stripe PaymentIntent using shop-specific account
     let paymentIntent: Stripe.PaymentIntent | null = null;
+    let isMockPayment = false;
+
     if (total > 0) {
       if (req.shop) {
         paymentIntent = await createPaymentIntent(req.shop, total, {
@@ -164,6 +166,7 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
           id: `mock_pi_${Date.now()}`,
           client_secret: `mock_secret_${Date.now()}`,
         } as Stripe.PaymentIntent;
+        isMockPayment = true;
         console.log('⚠️  Using mock payment (Stripe not configured for shop)');
       }
     }
@@ -182,6 +185,13 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
       is_scheduled: isScheduled,
       items,
     });
+
+    // If using mock payment or free order, immediately mark as received
+    if (isMockPayment || total === 0) {
+      await OrderModel.updateStatus(order.id, 'received');
+      order.status = 'received';
+      console.log(`✅ Order ${order.id} automatically marked as received (mock payment or free order)`);
+    }
 
     // Record membership usage if applicable
     if (membershipUsed && membershipId) {
