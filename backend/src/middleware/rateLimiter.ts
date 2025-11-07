@@ -26,7 +26,7 @@ export const passwordResetLimiter = rateLimit({
 
 // Order creation rate limiter (prevent spam orders)
 export const orderLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 10, // 10 orders per 5 minutes
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 orders per 15 minutes (generous for testing)
   message: 'Too many orders, please slow down.',
 });
