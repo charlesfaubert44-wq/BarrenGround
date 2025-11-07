@@ -340,7 +340,7 @@ export async function getOrdersByStatus(req: Request, res: Response): Promise<vo
 }
 
 export const updateOrderStatusValidation = [
-  body('status').isIn(['pending', 'received', 'preparing', 'ready', 'cancelled']),
+  body('status').isIn(['pending', 'received', 'preparing', 'ready', 'completed', 'cancelled']),
 ];
 
 export async function updateOrderStatus(req: Request, res: Response): Promise<void> {

@@ -10,7 +10,7 @@ export interface Order {
   guest_name?: string;
   guest_phone?: string;
   total: number;
-  status: 'pending' | 'received' | 'preparing' | 'ready' | 'cancelled';
+  status: 'pending' | 'received' | 'preparing' | 'ready' | 'completed' | 'cancelled';
   payment_intent_id: string;
   tracking_token?: string;
   pickup_time?: Date;
