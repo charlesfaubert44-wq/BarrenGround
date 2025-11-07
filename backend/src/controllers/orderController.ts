@@ -345,8 +345,13 @@ export const updateOrderStatusValidation = [
 
 export async function updateOrderStatus(req: Request, res: Response): Promise<void> {
   try {
+    console.log('[updateOrderStatus] Request params:', req.params);
+    console.log('[updateOrderStatus] Request body:', req.body);
+    console.log('[updateOrderStatus] Shop:', req.shop?.id);
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('[updateOrderStatus] Validation errors:', errors.array());
       res.status(400).json({ errors: errors.array() });
       return;
     }
@@ -359,8 +364,10 @@ export async function updateOrderStatus(req: Request, res: Response): Promise<vo
     }
 
     const { status } = req.body;
+    console.log('[updateOrderStatus] Updating order', id, 'to status:', status);
 
     const order = await OrderModel.updateStatus(id, status);
+    console.log('[updateOrderStatus] Order after update:', order);
 
     if (!order) {
       res.status(404).json({ error: 'Order not found' });

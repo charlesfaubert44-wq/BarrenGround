@@ -264,7 +264,7 @@ export class OrderModel {
       if (!order) return null;
       return {
         ...order,
-        total: parseFloat(order.total),
+        total: order.total ? parseFloat(order.total) : 0,
       };
     }
 
@@ -276,7 +276,7 @@ export class OrderModel {
     if (!order) return null;
     return {
       ...order,
-      total: parseFloat(order.total),
+      total: order.total ? parseFloat(order.total) : 0,
     };
   }
 
