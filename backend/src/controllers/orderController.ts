@@ -380,13 +380,8 @@ export async function updateOrderStatus(req: Request, res: Response): Promise<vo
       }
     }
 
-    // Parse numeric fields before returning
-    const parsedOrder = {
-      ...order,
-      total: order.total ? parseFloat(order.total as any) : order.total,
-    };
-
-    res.json(parsedOrder);
+    // Order already has numeric fields parsed by OrderModel.updateStatus
+    res.json(order);
   } catch (error) {
     console.error('Update order status error:', error);
     res.status(500).json({ error: 'Internal server error' });
