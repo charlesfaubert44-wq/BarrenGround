@@ -260,14 +260,24 @@ export class OrderModel {
         'UPDATE orders SET status = $1, ready_at = NOW() WHERE id = $2 RETURNING *',
         [status, id]
       );
-      return result.rows[0] || null;
+      const order = result.rows[0];
+      if (!order) return null;
+      return {
+        ...order,
+        total: parseFloat(order.total),
+      };
     }
 
     const result = await pool.query(
       'UPDATE orders SET status = $1 WHERE id = $2 RETURNING *',
       [status, id]
     );
-    return result.rows[0] || null;
+    const order = result.rows[0];
+    if (!order) return null;
+    return {
+      ...order,
+      total: parseFloat(order.total),
+    };
   }
 
   static async updateCustomerStatus(trackingToken: string, customerStatus: string): Promise<Order | null> {

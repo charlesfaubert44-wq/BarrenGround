@@ -370,7 +370,7 @@ export async function updateOrderStatus(req: Request, res: Response): Promise<vo
     // Send email notification when order status changes to 'ready'
     if (status === 'ready') {
       try {
-        const fullOrder = await OrderModel.getById(id);
+        const fullOrder = await OrderModel.getById(id, req.shop!.id);
         if (fullOrder) {
           await EmailService.sendOrderReady(fullOrder, req.shop!);
         }
@@ -380,7 +380,13 @@ export async function updateOrderStatus(req: Request, res: Response): Promise<vo
       }
     }
 
-    res.json(order);
+    // Parse numeric fields before returning
+    const parsedOrder = {
+      ...order,
+      total: order.total ? parseFloat(order.total as any) : order.total,
+    };
+
+    res.json(parsedOrder);
   } catch (error) {
     console.error('Update order status error:', error);
     res.status(500).json({ error: 'Internal server error' });
