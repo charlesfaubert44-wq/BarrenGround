@@ -14,7 +14,7 @@ export async function getAllNews(req: Request, res: Response): Promise<void> {
 
 export async function getNewsItem(req: Request, res: Response): Promise<void> {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
 
     if (isNaN(id)) {
       res.status(400).json({ error: 'Invalid news ID' });
@@ -85,7 +85,7 @@ export async function updateNews(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
 
     if (isNaN(id)) {
       res.status(400).json({ error: 'Invalid news ID' });
@@ -118,7 +118,7 @@ export async function updateNewsActive(req: Request, res: Response): Promise<voi
       return;
     }
 
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
 
     if (isNaN(id)) {
       res.status(400).json({ error: 'Invalid news ID' });
@@ -142,7 +142,7 @@ export async function updateNewsActive(req: Request, res: Response): Promise<voi
 
 export async function deleteNews(req: Request, res: Response): Promise<void> {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
 
     if (isNaN(id)) {
       res.status(400).json({ error: 'Invalid news ID' });

@@ -14,7 +14,7 @@ export async function getAllPromos(req: Request, res: Response): Promise<void> {
 
 export async function getPromo(req: Request, res: Response): Promise<void> {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
 
     if (isNaN(id)) {
       res.status(400).json({ error: 'Invalid promo ID' });
@@ -89,7 +89,7 @@ export async function updatePromo(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
 
     if (isNaN(id)) {
       res.status(400).json({ error: 'Invalid promo ID' });
@@ -122,7 +122,7 @@ export async function updatePromoActive(req: Request, res: Response): Promise<vo
       return;
     }
 
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
 
     if (isNaN(id)) {
       res.status(400).json({ error: 'Invalid promo ID' });
@@ -146,7 +146,7 @@ export async function updatePromoActive(req: Request, res: Response): Promise<vo
 
 export async function deletePromo(req: Request, res: Response): Promise<void> {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
 
     if (isNaN(id)) {
       res.status(400).json({ error: 'Invalid promo ID' });

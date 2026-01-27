@@ -76,7 +76,7 @@ router.post('/update', updateCartValidation, async (req: Request, res: Response)
  */
 router.delete('/:sessionId', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { sessionId } = req.params;
+    const sessionId = req.params.sessionId as string;
 
     if (!sessionId) {
       res.status(400).json({ error: 'Session ID required' });

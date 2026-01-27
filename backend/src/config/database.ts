@@ -1,12 +1,16 @@
 import { Pool } from 'pg';
 
-// Serverless-friendly PostgreSQL connection pool
+// Determine pool size based on environment
+// - Traditional deployment (Dokploy/Docker): Use larger pool
+// - Serverless (Vercel): Use single connection
+const isServerless = process.env.VERCEL === '1' || process.env.AWS_LAMBDA_FUNCTION_NAME;
+const poolSize = isServerless ? 1 : parseInt(process.env.DB_POOL_SIZE || '10', 10);
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  // Serverless optimizations
-  max: 1, // Limit connections in serverless environment
-  idleTimeoutMillis: 10000,
+  max: poolSize,
+  idleTimeoutMillis: isServerless ? 10000 : 30000,
   connectionTimeoutMillis: 10000,
 });
 

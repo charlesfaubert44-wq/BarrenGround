@@ -187,7 +187,22 @@ export default function CheckoutPage() {
       // Navigate to order success page - isPlacingOrder flag prevents redirect to /cart
       navigate(`/order-success?token=${order.trackingToken}&orderId=${order.id}`);
     } catch (err: any) {
-      setError(err.error || err.message || 'Failed to place order. Please try again.');
+      // Handle different error formats from the backend
+      let errorMessage = 'Failed to place order. Please try again.';
+      if (err.error) {
+        errorMessage = err.error;
+        // Include details if available (development mode)
+        if (err.details) {
+          errorMessage += `: ${err.details}`;
+        }
+      } else if (err.errors && Array.isArray(err.errors)) {
+        // Handle express-validator errors array
+        errorMessage = err.errors.map((e: any) => e.msg || e.message).join(', ');
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      console.error('Order placement error:', err);
+      setError(errorMessage);
       setIsPlacingOrder(false);
     } finally {
       setIsLoading(false);

@@ -19,7 +19,7 @@ export async function getAllMenuItems(req: Request, res: Response): Promise<void
 
 export async function getMenuItem(req: Request, res: Response): Promise<void> {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
 
     if (isNaN(id)) {
       res.status(400).json({ error: 'Invalid menu item ID' });
@@ -52,7 +52,7 @@ export async function updateMenuItemAvailability(req: Request, res: Response): P
       return;
     }
 
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
 
     if (isNaN(id)) {
       res.status(400).json({ error: 'Invalid menu item ID' });
@@ -119,7 +119,7 @@ export async function updateMenuItem(req: Request, res: Response): Promise<void>
       return;
     }
 
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
 
     if (isNaN(id)) {
       res.status(400).json({ error: 'Invalid menu item ID' });
@@ -142,7 +142,7 @@ export async function updateMenuItem(req: Request, res: Response): Promise<void>
 
 export async function deleteMenuItem(req: Request, res: Response): Promise<void> {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
 
     if (isNaN(id)) {
       res.status(400).json({ error: 'Invalid menu item ID' });

@@ -1,15 +1,15 @@
 // Auto-detect API URL based on current hostname
 // This allows the app to work both locally and on network
 const getApiUrl = () => {
-  // If VITE_API_URL is explicitly set and not localhost, use it
-  if (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) {
+  // If VITE_API_URL is explicitly set, use it
+  if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
 
   // Otherwise, use the current hostname with backend port
   const hostname = window.location.hostname;
   const protocol = window.location.protocol;
-  return `${protocol}//${hostname}:8888`;
+  return `${protocol}//${hostname}:5000`;
 };
 
 const API_URL = getApiUrl();
@@ -54,6 +54,17 @@ export async function apiRequest<T>(
     ...options,
     headers,
   });
+
+  // Check if response is JSON
+  const contentType = response.headers.get('content-type');
+  if (!contentType || !contentType.includes('application/json')) {
+    const text = await response.text();
+    console.error(`Expected JSON but got: ${contentType}`, text.substring(0, 200));
+    throw {
+      error: 'Invalid response format',
+      message: `Expected JSON but received ${contentType}`,
+    } as ApiError;
+  }
 
   const data = await response.json();
 

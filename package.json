@@ -3,12 +3,6 @@
   "version": "1.0.0",
   "description": "Barren Ground Coffee ordering system with customer frontend and employee dashboard",
   "private": true,
-  "workspaces": [
-    "backend",
-    "customer-frontend",
-    "employee-dashboard",
-    "packages/*"
-  ],
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:customer\" \"npm run dev:employee\" --names \"backend,customer,employee\" --prefix-colors \"blue,green,yellow\"",
     "dev:backend": "cd backend && npm run dev",

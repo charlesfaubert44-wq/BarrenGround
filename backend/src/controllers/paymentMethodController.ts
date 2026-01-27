@@ -130,7 +130,7 @@ export async function setDefaultPaymentMethod(req: Request, res: Response): Prom
       return;
     }
 
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const paymentMethod = await PaymentMethodModel.setAsDefault(
       parseInt(id),
@@ -166,7 +166,7 @@ export async function deletePaymentMethod(req: Request, res: Response): Promise<
       return;
     }
 
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     // Get payment method from database
     const paymentMethod = await PaymentMethodModel.findById(parseInt(id), req.shop!.id);

@@ -250,15 +250,19 @@ export async function createOrder(req: Request, res: Response): Promise<void> {
       pointsDiscount,
       pointsEarned: user_id ? Math.floor(originalTotal) : 0,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Create order error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error stack:', error?.stack);
+    res.status(500).json({
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error?.message : undefined
+    });
   }
 }
 
 export async function getOrder(req: Request, res: Response): Promise<void> {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
 
     if (isNaN(id)) {
       res.status(400).json({ error: 'Invalid order ID' });
@@ -287,7 +291,7 @@ export async function getOrder(req: Request, res: Response): Promise<void> {
 
 export async function getOrderByToken(req: Request, res: Response): Promise<void> {
   try {
-    const { token } = req.params;
+    const token = req.params.token as string;
 
     const order = await OrderModel.getByTrackingToken(token);
 
@@ -356,7 +360,7 @@ export async function updateOrderStatus(req: Request, res: Response): Promise<vo
       return;
     }
 
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
 
     if (isNaN(id)) {
       res.status(400).json({ error: 'Invalid order ID' });
@@ -436,7 +440,7 @@ export async function getLastOrder(req: Request, res: Response): Promise<void> {
 
 export async function updateCustomerStatus(req: Request, res: Response): Promise<void> {
   try {
-    const { trackingToken } = req.params;
+    const trackingToken = req.params.trackingToken as string;
     const { customerStatus } = req.body;
 
     if (!trackingToken) {
