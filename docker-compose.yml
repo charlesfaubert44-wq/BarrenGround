@@ -53,8 +53,14 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`${BACKEND_DOMAIN:-api.localhost}`)"
+      - "traefik.http.routers.backend.entrypoints=web"
+      - "traefik.http.services.backend.loadbalancer.server.port=5000"
     networks:
       - barrenground-network
+      - dokploy-network
 
   # Customer Frontend
   customer-frontend:
@@ -77,8 +83,14 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.customer.rule=Host(`${CUSTOMER_DOMAIN:-localhost}`)"
+      - "traefik.http.routers.customer.entrypoints=web"
+      - "traefik.http.services.customer.loadbalancer.server.port=80"
     networks:
       - barrenground-network
+      - dokploy-network
 
   # Employee Dashboard
   employee-dashboard:
@@ -100,8 +112,14 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.employee.rule=Host(`${EMPLOYEE_DOMAIN:-employee.localhost}`)"
+      - "traefik.http.routers.employee.entrypoints=web"
+      - "traefik.http.services.employee.loadbalancer.server.port=80"
     networks:
       - barrenground-network
+      - dokploy-network
 
 volumes:
   postgres_data:
@@ -110,3 +128,5 @@ volumes:
 networks:
   barrenground-network:
     driver: bridge
+  dokploy-network:
+    external: true
