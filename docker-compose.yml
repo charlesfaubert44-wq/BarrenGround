@@ -80,11 +80,12 @@ services:
       retries: 3
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
       - "traefik.http.routers.bg-customer.rule=Host(`coffee-app-utufj2-e22026-54-39-131-33.traefik.me`)"
       - "traefik.http.routers.bg-customer.entrypoints=web"
+      - "traefik.http.routers.bg-customer.service=bg-customer"
       - "traefik.http.services.bg-customer.loadbalancer.server.port=80"
     networks:
-      - barrenground-network
       - dokploy-network
 
   # Employee Dashboard
@@ -109,11 +110,12 @@ services:
       retries: 3
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
       - "traefik.http.routers.bg-employee.rule=Host(`coffee-app-utufj2-2f0db5-54-39-131-33.traefik.me`)"
       - "traefik.http.routers.bg-employee.entrypoints=web"
+      - "traefik.http.routers.bg-employee.service=bg-employee"
       - "traefik.http.services.bg-employee.loadbalancer.server.port=80"
     networks:
-      - barrenground-network
       - dokploy-network
 
 volumes:
