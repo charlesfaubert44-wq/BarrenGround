@@ -78,6 +78,11 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bg-customer.rule=Host(`coffee-app-utufj2-e22026-54-39-131-33.traefik.me`)"
+      - "traefik.http.routers.bg-customer.entrypoints=web"
+      - "traefik.http.services.bg-customer.loadbalancer.server.port=80"
     networks:
       - barrenground-network
       - dokploy-network
@@ -102,6 +107,11 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bg-employee.rule=Host(`coffee-app-utufj2-2f0db5-54-39-131-33.traefik.me`)"
+      - "traefik.http.routers.bg-employee.entrypoints=web"
+      - "traefik.http.services.bg-employee.loadbalancer.server.port=80"
     networks:
       - barrenground-network
       - dokploy-network
